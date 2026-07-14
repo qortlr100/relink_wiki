@@ -189,6 +189,25 @@ describe("validateLocalizationJoins", () => {
     expect(result.readyForAutomaticNormalization).toBe(false);
   });
 
+  it("rejects numeric candidate join keys instead of coercing them", () => {
+    const config = createFixture();
+    const sqlite = new Database(config.candidateDatabasePath);
+    sqlite.exec(`
+      DROP TABLE ability;
+      CREATE TABLE ability (Unk5 INTEGER);
+      INSERT INTO ability VALUES (123);
+    `);
+    sqlite.close();
+
+    expect(() => validateLocalizationJoins(config)).toThrow(LocalizationValidationError);
+    try {
+      validateLocalizationJoins(config);
+    } catch (error) {
+      expect(error).toMatchObject({ code: "LOCALIZATION_TABLE_INVALID" });
+      expect(String(error)).not.toContain("123");
+    }
+  });
+
   it("maps missing candidate tables to a stable error", () => {
     const config = createFixture({ omitAbility: true });
 
