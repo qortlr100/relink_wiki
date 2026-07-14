@@ -27,6 +27,8 @@ The mining application targets the user's local Windows game installation. It mu
 
 Required versions will be pinned when the first application scaffold is committed. Prefer current LTS runtimes supported by Sites and required dependencies.
 
+The active SQLite database lives on the Windows PC. The application may use WSL helpers when useful, but the Windows path is canonical and conversions must be explicit. Backups are written to NAS before destructive migrations, accepted-import replacement, or publication and are retained indefinitely under the initial policy.
+
 ## Configuration contract
 
 Commit a documented `.env.example`, but never commit real values.
@@ -63,7 +65,7 @@ Every release contains a manifest similar to:
 ```ts
 type SnapshotManifest = {
   schemaVersion: number;
-  gameVersion: string;
+  contentRevision: string;
   generatedAt: string;
   sourceRevision: string;
   extractor: {
@@ -75,6 +77,8 @@ type SnapshotManifest = {
 ```
 
 The final schema will be defined with Zod and inferred into TypeScript. Public DTOs are allowlists and must not reuse private database row types directly.
+
+The project does not maintain a normal game-version history because it targets the expected final content state. If a development-time game transition changes extraction or normalized semantics, record a one-off compatibility label on that import rather than introducing a permanent version catalog.
 
 ## Initial quality commands
 
