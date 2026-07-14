@@ -1,0 +1,4 @@
+interface:
+  display_name: "작업 완료 및 PR 생성"
+  short_description: "문서화와 검증 후 브랜치 커밋 및 PR 생성"
+  default_prompt: "Use $finish-branch-pr to update documentation, validate the completed work, commit it on a work branch, push it, and open a pull request."
