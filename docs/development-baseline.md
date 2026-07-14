@@ -60,7 +60,9 @@ Stages must be independently repeatable and must not infer success from file exi
 
 ## Public snapshot contract
 
-Every release contains a manifest similar to:
+The current version 1 prototype snapshot is validated by `publicSnapshotSchema` in `packages/domain`. It contains the four allowlisted collections `characters`, `weapons`, `sigils`, and `skills` together with `schemaVersion`, `contentRevision`, `generatedAt`, and `sourceRevision`. Prototype records expose only their public identifier, slug, Korean display name, and the literal `published` review state.
+
+This prototype contract is intentionally smaller than the final publication manifest. Before the first real data release, the publisher will add and validate release metadata similar to:
 
 ```ts
 type SnapshotManifest = {
@@ -76,7 +78,7 @@ type SnapshotManifest = {
 };
 ```
 
-The final schema will be defined with Zod and inferred into TypeScript. Public DTOs are allowlists and must not reuse private database row types directly.
+The final publication manifest schema will be defined with Zod and inferred into TypeScript when the publisher is implemented. Public DTOs are allowlists and must not reuse private database row types directly. Do not treat the in-app sample snapshot as a generated public release.
 
 The project does not maintain a normal game-version history because it targets the expected final content state. If a development-time game transition changes extraction or normalized semantics, record a one-off compatibility label on that import rather than introducing a permanent version catalog.
 
