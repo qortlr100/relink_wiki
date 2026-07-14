@@ -13,7 +13,7 @@ The validated joins are:
 | Sigil           | `gem`           | `Name`           | `text.msg`          |
 | Skill candidate | `ability`       | `Unk5`           | `text.msg`          |
 
-The `.msg` inputs are MessagePack documents. The validator decodes them locally and validates the `rows_[].column_.id_hash_`, `subid_hash_`, and `text_` fields with Zod before using them. Display-name joins use only rows with an empty `subid_hash_`; non-empty sub-identifiers represent other UI contexts and may reuse an identifier with different text. The validator reports counts only and never prints message identifiers, localized text, source payloads, or local paths.
+The `.msg` inputs are MessagePack documents. The validator decodes them locally and validates the `rows_[].column_.id_hash_`, `subid_hash_`, and `text_` fields with Zod before using them. Display-name joins use only rows with an empty `subid_hash_`; non-empty sub-identifiers represent other UI contexts and may reuse an identifier with different text. Candidate keys are trimmed consistently for coverage lookup, while rows that required trimming are counted as non-canonical and block automatic normalization. The validator reports counts only and never prints message identifiers, localized text, source payloads, or local paths.
 
 ## Reproducible extraction
 
@@ -42,12 +42,12 @@ pnpm --filter @relink-wiki/extractor localization:validate
 
 The 2026-07-15 validation against the pinned GBFRDataTools `2.0.0` candidate output produced:
 
-| Category  | Source rows | Non-empty keys | Matched rows | Ignored empty-key rows | Unresolved rows |
-| --------- | ----------: | -------------: | -----------: | ---------------------: | --------------: |
-| Character |          41 |             37 |           35 |                      4 |               2 |
-| Weapon    |         410 |            363 |          361 |                     47 |               2 |
-| Sigil     |       1,034 |          1,023 |        1,023 |                     11 |               0 |
-| Skill     |         278 |            262 |          262 |                     16 |               0 |
+| Category  | Source rows | Non-empty keys | Matched rows | Ignored empty-key rows | Non-canonical key rows | Unresolved rows |
+| --------- | ----------: | -------------: | -----------: | ---------------------: | ---------------------: | --------------: |
+| Character |          41 |             37 |           35 |                      4 |                      0 |               2 |
+| Weapon    |         410 |            363 |          361 |                     47 |                      0 |               2 |
+| Sigil     |       1,034 |          1,023 |        1,023 |                     11 |                      0 |               0 |
+| Skill     |         278 |            262 |          262 |                     16 |                      0 |               0 |
 
 The two unresolved character rows share one context-dependent key whose base display-name text is empty; non-empty sub-identifiers contain other UI contexts and cannot be selected as a canonical character name without an explicit rule. The two unmatched weapon rows share one unresolved hash-like key rather than the normal `TXT_WEP_NAME_*` form. Because their intended display names and publication meaning are not established, the validator reports only unresolved counts and sets `readyForAutomaticNormalization` to `false`.
 

@@ -59,6 +59,7 @@ export interface LocalizationCategoryResult {
   eligibleRowCount: number;
   matchedRowCount: number;
   ignoredRowCount: number;
+  nonCanonicalKeyRowCount: number;
   unresolvedRowCount: number;
   unresolvedKeyCount: number;
 }
@@ -127,11 +128,14 @@ function readMessageCatalog(messagePath: string): Map<string, string> {
 }
 
 function openCandidateDatabase(path: string): Database.Database {
+  let sqlite: Database.Database | undefined;
+
   try {
-    const sqlite = new Database(path, { fileMustExist: true, readonly: true });
+    sqlite = new Database(path, { fileMustExist: true, readonly: true });
     sqlite.pragma("query_only = ON");
     return sqlite;
   } catch {
+    sqlite?.close();
     throw new LocalizationValidationError(
       "LOCALIZATION_CANDIDATE_INVALID",
       "후보 SQLite 데이터베이스를 읽기 전용으로 열 수 없습니다.",
@@ -184,9 +188,14 @@ export function validateLocalizationJoins(input: unknown): LocalizationValidatio
   try {
     const categoryEntries = joinContracts.map((contract) => {
       const messageKeys = readMessageKeys(sqlite, contract);
-      const eligibleKeys = messageKeys.filter(
-        (messageKey): messageKey is string => messageKey !== null && messageKey.trim().length > 0,
-      );
+      const eligibleKeys = messageKeys.flatMap((messageKey) => {
+        if (messageKey === null) {
+          return [];
+        }
+
+        const lookupKey = messageKey.trim();
+        return lookupKey.length > 0 ? [{ messageKey, lookupKey }] : [];
+      });
       const catalog = catalogs.get(contract.messageFile);
       if (!catalog) {
         throw new LocalizationValidationError(
@@ -194,8 +203,8 @@ export function validateLocalizationJoins(input: unknown): LocalizationValidatio
           "필수 한국어 메시지 카탈로그를 찾을 수 없습니다.",
         );
       }
-      const unresolvedKeys = eligibleKeys.filter((messageKey) => {
-        const localizedText = catalog.get(messageKey);
+      const unresolvedKeys = eligibleKeys.filter(({ lookupKey }) => {
+        const localizedText = catalog.get(lookupKey);
         return localizedText === undefined || localizedText.trim().length === 0;
       });
 
@@ -206,8 +215,11 @@ export function validateLocalizationJoins(input: unknown): LocalizationValidatio
           eligibleRowCount: eligibleKeys.length,
           matchedRowCount: eligibleKeys.length - unresolvedKeys.length,
           ignoredRowCount: messageKeys.length - eligibleKeys.length,
+          nonCanonicalKeyRowCount: eligibleKeys.filter(
+            ({ messageKey, lookupKey }) => messageKey !== lookupKey,
+          ).length,
           unresolvedRowCount: unresolvedKeys.length,
-          unresolvedKeyCount: new Set(unresolvedKeys).size,
+          unresolvedKeyCount: new Set(unresolvedKeys.map(({ lookupKey }) => lookupKey)).size,
         },
       ] as const;
     });
@@ -218,7 +230,10 @@ export function validateLocalizationJoins(input: unknown): LocalizationValidatio
     return {
       categories,
       readyForAutomaticNormalization: Object.values(categories).every(
-        (category) => category.unresolvedRowCount === 0 && category.ignoredRowCount === 0,
+        (category) =>
+          category.unresolvedRowCount === 0 &&
+          category.ignoredRowCount === 0 &&
+          category.nonCanonicalKeyRowCount === 0,
       ),
     };
   } finally {

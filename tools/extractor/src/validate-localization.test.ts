@@ -89,6 +89,7 @@ describe("validateLocalizationJoins", () => {
           eligibleRowCount: 1,
           matchedRowCount: 1,
           ignoredRowCount: 1,
+          nonCanonicalKeyRowCount: 0,
           unresolvedRowCount: 0,
           unresolvedKeyCount: 0,
         },
@@ -97,6 +98,7 @@ describe("validateLocalizationJoins", () => {
           eligibleRowCount: 2,
           matchedRowCount: 1,
           ignoredRowCount: 1,
+          nonCanonicalKeyRowCount: 0,
           unresolvedRowCount: 1,
           unresolvedKeyCount: 1,
         },
@@ -105,6 +107,7 @@ describe("validateLocalizationJoins", () => {
           eligibleRowCount: 1,
           matchedRowCount: 1,
           ignoredRowCount: 0,
+          nonCanonicalKeyRowCount: 0,
           unresolvedRowCount: 0,
           unresolvedKeyCount: 0,
         },
@@ -113,6 +116,7 @@ describe("validateLocalizationJoins", () => {
           eligibleRowCount: 1,
           matchedRowCount: 1,
           ignoredRowCount: 0,
+          nonCanonicalKeyRowCount: 0,
           unresolvedRowCount: 0,
           unresolvedKeyCount: 0,
         },
@@ -144,6 +148,24 @@ describe("validateLocalizationJoins", () => {
     expect(Object.values(result.categories).some((category) => category.ignoredRowCount > 0)).toBe(
       true,
     );
+    expect(result.readyForAutomaticNormalization).toBe(false);
+  });
+
+  it("normalizes surrounding whitespace for lookup but blocks non-canonical keys", () => {
+    const config = createFixture({ resolveWeapon: true });
+    const sqlite = new Database(config.candidateDatabasePath);
+    sqlite
+      .prepare("UPDATE weapon SET Name = ? WHERE Name = ?")
+      .run("  TXT_WEP_NAME_PL0000_01  ", "TXT_WEP_NAME_PL0000_01");
+    sqlite.close();
+
+    const result = validateLocalizationJoins(config);
+
+    expect(result.categories.weapon).toMatchObject({
+      matchedRowCount: 2,
+      nonCanonicalKeyRowCount: 1,
+      unresolvedRowCount: 0,
+    });
     expect(result.readyForAutomaticNormalization).toBe(false);
   });
 
