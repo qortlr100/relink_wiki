@@ -84,7 +84,7 @@ export default function Home() {
             <p className="eyebrow">BROWSE THE ARCHIVE</p>
             <h2>분류별 탐색</h2>
           </div>
-          <p>현재 공개된 샘플 기록 {catalogRecords.length}개</p>
+          <p>현재 공개된 기록 {catalogRecords.length}개</p>
         </div>
         <div className="category-grid">
           {categories.map((category) => (
@@ -118,7 +118,11 @@ export default function Home() {
           <div>
             <dt>생성 시각</dt>
             <dd>
-              <time dateTime={snapshot.generatedAt}>2026. 7. 14.</time>
+              <time dateTime={snapshot.generatedAt}>
+                {new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeZone: "UTC" }).format(
+                  new Date(snapshot.generatedAt),
+                )}
+              </time>
             </dd>
           </div>
           <div>
