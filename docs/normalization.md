@@ -67,4 +67,4 @@ The idempotency fingerprint covers the selected import, normalization schema ver
 - `DATABASE_BUSY`: another local database operation held the write lock past the wait timeout;
 - `EXTRACTOR_CONFIG_INVALID`: required private environment variables are missing or invalid.
 
-Errors never include the mapping path, database path, or private source payload.
+Mapping validation errors include only the failing field path and validation reason, capped at five issues. Errors never include the mapping path, database path, private field value, or source payload.

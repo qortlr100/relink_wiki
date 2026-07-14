@@ -1,13 +1,9 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { applyMigrations, importStagingRecords, openDatabase } from "@relink-wiki/database";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  NormalizationMappingError,
-  normalizeMappedDatabase,
-  readMappedNormalizationConfig,
-} from "./normalize-mapped";
+import { normalizeMappedDatabase, readMappedNormalizationConfig } from "./normalize-mapped";
 
 const temporaryRoots: string[] = [];
 
@@ -80,7 +76,47 @@ describe("normalizeMappedDatabase", () => {
     writeFileSync(config.mappingPath, "not-json");
 
     expect(() => normalizeMappedDatabase({ ...config, schemaVersion: 1 })).toThrow(
-      NormalizationMappingError,
+      "JSON 문법이 올바르지 않습니다.",
+    );
+    try {
+      normalizeMappedDatabase({ ...config, schemaVersion: 1 });
+    } catch (error) {
+      expect(String(error)).not.toContain(config.mappingPath);
+    }
+  });
+
+  it("reports an unreadable mapping without exposing its private path", () => {
+    const config = createFixture();
+    const missingMappingPath = `${config.mappingPath}.missing`;
+
+    expect(() =>
+      normalizeMappedDatabase({
+        ...config,
+        mappingPath: missingMappingPath,
+        schemaVersion: 1,
+      }),
+    ).toThrow("정규화 매핑 파일을 읽거나 검증할 수 없습니다.");
+    try {
+      normalizeMappedDatabase({
+        ...config,
+        mappingPath: missingMappingPath,
+        schemaVersion: 1,
+      });
+    } catch (error) {
+      expect(String(error)).not.toContain(missingMappingPath);
+    }
+  });
+
+  it("reports safe field details for invalid mapping records", () => {
+    const config = createFixture();
+    const mapping = JSON.parse(readFileSync(config.mappingPath, "utf8")) as {
+      records: Record<string, unknown>[];
+    };
+    mapping.records.push({ ...mapping.records[0] });
+    writeFileSync(config.mappingPath, JSON.stringify(mapping));
+
+    expect(() => normalizeMappedDatabase({ ...config, schemaVersion: 1 })).toThrow(
+      "records.1: 원본 레코드 매핑이 중복되었습니다.",
     );
     try {
       normalizeMappedDatabase({ ...config, schemaVersion: 1 });

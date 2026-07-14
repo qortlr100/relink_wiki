@@ -28,8 +28,12 @@ export type MappedNormalizationConfig = z.infer<typeof mappedNormalizationConfig
 export class NormalizationMappingError extends Error {
   readonly code = "NORMALIZATION_MAPPING_INVALID";
 
-  constructor() {
-    super("정규화 매핑 파일을 읽거나 검증할 수 없습니다.");
+  constructor(detail?: string) {
+    super(
+      detail
+        ? `정규화 매핑 파일을 검증할 수 없습니다: ${detail}`
+        : "정규화 매핑 파일을 읽거나 검증할 수 없습니다.",
+    );
     this.name = "NormalizationMappingError";
   }
 }
@@ -45,11 +49,36 @@ export function readMappedNormalizationConfig(
 }
 
 function readMappingFile(mappingPath: string) {
+  let mappingText: string;
+  let mappingInput: unknown;
+
   try {
-    return normalizationMappingFileSchema.parse(JSON.parse(readFileSync(mappingPath, "utf8")));
+    mappingText = readFileSync(mappingPath, "utf8");
   } catch {
     throw new NormalizationMappingError();
   }
+
+  try {
+    mappingInput = JSON.parse(mappingText);
+  } catch {
+    throw new NormalizationMappingError("JSON 문법이 올바르지 않습니다.");
+  }
+
+  const result = normalizationMappingFileSchema.safeParse(mappingInput);
+  if (!result.success) {
+    const issueLimit = 5;
+    const issueDetails = result.error.issues.slice(0, issueLimit).map((issue) => {
+      const fieldPath = issue.path.map(String).join(".");
+      return fieldPath.length > 0 ? `${fieldPath}: ${issue.message}` : issue.message;
+    });
+    const remainingIssueCount = result.error.issues.length - issueDetails.length;
+    if (remainingIssueCount > 0) {
+      issueDetails.push(`외 ${String(remainingIssueCount)}개 오류`);
+    }
+    throw new NormalizationMappingError(issueDetails.join("; "));
+  }
+
+  return result.data;
 }
 
 export function normalizeMappedDatabase(input: unknown): NormalizationResult {
