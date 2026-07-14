@@ -25,7 +25,9 @@ function writeMessage(path: string, entries: [string, string][]): void {
   );
 }
 
-function createFixture(options: { omitAbility?: boolean; invalidMessage?: boolean } = {}) {
+function createFixture(
+  options: { omitAbility?: boolean; invalidMessage?: boolean; resolveWeapon?: boolean } = {},
+) {
   const root = mkdtempSync(join(tmpdir(), "relink-localization-"));
   temporaryRoots.push(root);
   const candidateDatabasePath = join(root, "candidate.sqlite");
@@ -50,6 +52,7 @@ function createFixture(options: { omitAbility?: boolean; invalidMessage?: boolea
   } else {
     writeMessage(join(koreanMessageDirectoryPath, "text.msg"), [
       ["TXT_WEP_NAME_PL0000_01", "무기"],
+      ...(options.resolveWeapon ? [["UNRESOLVED_HASH", "미해결 무기"] as [string, string]] : []),
       ["TXT_GEEN_000_00", "진"],
       ["TXT_AB_PL0000_01", "스킬"],
     ]);
@@ -130,6 +133,18 @@ describe("validateLocalizationJoins", () => {
       expect(error).toMatchObject({ code: "LOCALIZATION_MESSAGE_INVALID" });
       expect(String(error)).not.toContain(config.koreanMessageDirectoryPath);
     }
+  });
+
+  it("does not report automatic normalization readiness while ignored rows remain", () => {
+    const result = validateLocalizationJoins(createFixture({ resolveWeapon: true }));
+
+    expect(
+      Object.values(result.categories).every((category) => category.unresolvedRowCount === 0),
+    ).toBe(true);
+    expect(Object.values(result.categories).some((category) => category.ignoredRowCount > 0)).toBe(
+      true,
+    );
+    expect(result.readyForAutomaticNormalization).toBe(false);
   });
 
   it("maps missing candidate tables to a stable error", () => {

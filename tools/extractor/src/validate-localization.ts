@@ -218,7 +218,7 @@ export function validateLocalizationJoins(input: unknown): LocalizationValidatio
     return {
       categories,
       readyForAutomaticNormalization: Object.values(categories).every(
-        (category) => category.unresolvedRowCount === 0,
+        (category) => category.unresolvedRowCount === 0 && category.ignoredRowCount === 0,
       ),
     };
   } finally {
