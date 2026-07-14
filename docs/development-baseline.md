@@ -25,7 +25,7 @@ The public wiki must build in the Sites environment.
 
 The mining application targets the user's local Windows game installation. It must accept configuration rather than assuming a Steam library location. WSL support may be added, but Windows paths and WSL paths must never be mixed implicitly.
 
-Required versions will be pinned when the first application scaffold is committed. Prefer current LTS runtimes supported by Sites and required dependencies.
+The initial scaffold is verified with Node.js 24.15.0 and pnpm 10.15.1 on Windows. Node.js 22 or newer is supported by the package contract, while Node.js 24 LTS is the recommended local runtime. Keep the package manager version aligned with the root `packageManager` field.
 
 The active SQLite database lives on the Windows PC. The application may use WSL helpers when useful, but the Windows path is canonical and conversions must be explicit. Backups are written to NAS before destructive migrations, accepted-import replacement, or publication and are retained indefinitely under the initial policy.
 
@@ -82,7 +82,7 @@ The project does not maintain a normal game-version history because it targets t
 
 ## Initial quality commands
 
-The root package will expose these stable commands when scaffolding is added:
+The root package exposes `pnpm check` as the required aggregate verification command. It runs the following checks in order:
 
 ```bash
 pnpm format:check
@@ -90,10 +90,9 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
-pnpm verify
 ```
 
-Agents should call these root commands instead of inventing package-specific alternatives unless diagnosing a failure.
+The initial scaffold passed this complete sequence on Windows, including native `better-sqlite3` installation and production builds for both applications. Agents should call `pnpm check` instead of inventing package-specific alternatives unless diagnosing a failure.
 
 ## Documentation ownership
 
