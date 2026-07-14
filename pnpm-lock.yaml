@@ -119,10 +119,19 @@ importers:
 
   tools/extractor:
     dependencies:
+      '@relink-wiki/database':
+        specifier: workspace:*
+        version: link:../../packages/database
+      better-sqlite3:
+        specifier: 12.11.1
+        version: 12.11.1
       zod:
         specifier: 4.4.3
         version: 4.4.3
     devDependencies:
+      '@types/better-sqlite3':
+        specifier: 7.6.13
+        version: 7.6.13
       tsx:
         specifier: 4.20.6
         version: 4.20.6
