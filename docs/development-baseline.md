@@ -4,20 +4,20 @@ The mandatory contributor and agent rules live in the repository root `AGENTS.md
 
 ## Stack
 
-| Concern | Choice | Reason |
-|---|---|---|
-| Repository | pnpm workspace monorepo | Shares types and validation while keeping public and local applications separate |
-| Application language | TypeScript (strict) | One language across the wiki, local admin, pipeline adapters, and tests |
-| Public UI | React / Sites-compatible Vinext conventions | Direct path to the selected hosting surface |
-| Local admin | React plus a localhost-only Node runtime | Reuses UI and domain packages and can invoke external tools |
-| Extraction | Pinned GBFRDataTools executable | Existing support for archive extraction and table-to-SQLite conversion |
-| Local storage | SQLite | Portable, inspectable, and appropriate for a single-user local workflow |
-| Data access | Drizzle ORM | Typed schema and migrations without hiding SQL behavior |
-| Boundary validation | Zod | Makes extraction and publication contracts explicit |
-| Unit tests | Vitest | Fast TypeScript-native tests |
-| Browser tests | Playwright | Verifies wiki navigation and critical admin flows |
-| Static analysis | TypeScript, ESLint, Prettier | Reproducible baseline across agents |
-| Initial publication | Versioned static JSON | Simple and auditable before a hosted database is justified |
+| Concern              | Choice                                      | Reason                                                                           |
+| -------------------- | ------------------------------------------- | -------------------------------------------------------------------------------- |
+| Repository           | pnpm workspace monorepo                     | Shares types and validation while keeping public and local applications separate |
+| Application language | TypeScript (strict)                         | One language across the wiki, local admin, pipeline adapters, and tests          |
+| Public UI            | React / Sites-compatible Vinext conventions | Direct path to the selected hosting surface                                      |
+| Local admin          | React plus a localhost-only Node runtime    | Reuses UI and domain packages and can invoke external tools                      |
+| Extraction           | Pinned GBFRDataTools executable             | Existing support for archive extraction and table-to-SQLite conversion           |
+| Local storage        | SQLite                                      | Portable, inspectable, and appropriate for a single-user local workflow          |
+| Data access          | Drizzle ORM                                 | Typed schema and migrations without hiding SQL behavior                          |
+| Boundary validation  | Zod                                         | Makes extraction and publication contracts explicit                              |
+| Unit tests           | Vitest                                      | Fast TypeScript-native tests                                                     |
+| Browser tests        | Playwright                                  | Verifies wiki navigation and critical admin flows                                |
+| Static analysis      | TypeScript, ESLint, Prettier                | Reproducible baseline across agents                                              |
+| Initial publication  | Versioned static JSON                       | Simple and auditable before a hosted database is justified                       |
 
 ## Supported environments
 

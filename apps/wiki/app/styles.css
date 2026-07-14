@@ -1,0 +1,46 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, "Noto Sans KR", sans-serif;
+  background: #071426;
+  color: #edf2f7;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: radial-gradient(circle at top, #17345a, #071426 55%);
+  min-height: 100vh;
+}
+main {
+  max-width: 960px;
+  margin: auto;
+  padding: 12vh 28px;
+}
+.eyebrow {
+  color: #d9b866;
+  letter-spacing: 0.18em;
+  font-size: 0.78rem;
+}
+h1 {
+  font-family: Georgia, serif;
+  font-size: clamp(3rem, 9vw, 6rem);
+  margin: 0.2em 0;
+  color: #f4df9b;
+}
+main > p {
+  max-width: 600px;
+  line-height: 1.8;
+  color: #bdcadb;
+}
+section {
+  margin-top: 4rem;
+  padding: 2rem;
+  border: 1px solid #9d803e;
+  background: #0c1d33cc;
+  border-radius: 16px;
+}
+section h2 {
+  margin-top: 0;
+  color: #f4df9b;
+}

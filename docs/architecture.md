@@ -2,12 +2,12 @@
 
 ## Separation of responsibilities
 
-| Area | Runtime | Storage | Public |
-|---|---|---|---|
-| Wiki | Sites | Published snapshot / deployment database | Yes |
-| Mining admin | Localhost only | Local SQLite | No |
-| Extractor | Local CLI or background job | Raw game files | No |
-| Source and schema | GitHub | Git | Repository members |
+| Area              | Runtime                     | Storage                                  | Public             |
+| ----------------- | --------------------------- | ---------------------------------------- | ------------------ |
+| Wiki              | Sites                       | Published snapshot / deployment database | Yes                |
+| Mining admin      | Localhost only              | Local SQLite                             | No                 |
+| Extractor         | Local CLI or background job | Raw game files                           | No                 |
+| Source and schema | GitHub                      | Git                                      | Repository members |
 
 ## Data flow
 

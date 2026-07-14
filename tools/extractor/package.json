@@ -1,0 +1,16 @@
+{
+  "name": "@relink-wiki/extractor",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "relink-extractor": "./src/cli.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "4.4.3"
+  }
+}

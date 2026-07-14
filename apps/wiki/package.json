@@ -1,0 +1,23 @@
+{
+  "name": "@relink-wiki/wiki",
+  "private": true,
+  "scripts": {
+    "dev": "vinext dev",
+    "build": "vinext build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@relink-wiki/domain": "workspace:*",
+    "next": "16.2.10",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "react-server-dom-webpack": "19.2.7",
+    "vinext": "1.0.0-beta.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-rsc": "0.5.27",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3"
+  }
+}

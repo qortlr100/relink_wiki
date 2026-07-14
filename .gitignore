@@ -25,7 +25,9 @@ node_modules/
 dist/
 .output/
 .next/
+.vinext/
 coverage/
+*.tsbuildinfo
 
 # Logs and temporary files
 *.log
