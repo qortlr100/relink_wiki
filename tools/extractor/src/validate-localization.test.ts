@@ -139,6 +139,26 @@ describe("validateLocalizationJoins", () => {
     }
   });
 
+  it("rejects duplicate catalog identifiers outside the current join keys", () => {
+    const config = createFixture({ resolveWeapon: true });
+    writeMessage(join(config.koreanMessageDirectoryPath, "text.msg"), [
+      ["TXT_WEP_NAME_PL0000_01", "무기"],
+      ["UNRESOLVED_HASH", "미해결 무기"],
+      ["TXT_GEEN_000_00", "진"],
+      ["TXT_AB_PL0000_01", "스킬"],
+      ["UNUSED_DUPLICATE", "첫 번째 텍스트"],
+      ["UNUSED_DUPLICATE", "두 번째 텍스트"],
+    ]);
+
+    expect(() => validateLocalizationJoins(config)).toThrow(LocalizationValidationError);
+    try {
+      validateLocalizationJoins(config);
+    } catch (error) {
+      expect(error).toMatchObject({ code: "LOCALIZATION_MESSAGE_INVALID" });
+      expect(String(error)).not.toContain("UNUSED_DUPLICATE");
+    }
+  });
+
   it("does not report automatic normalization readiness while ignored rows remain", () => {
     const result = validateLocalizationJoins(createFixture({ resolveWeapon: true }));
 

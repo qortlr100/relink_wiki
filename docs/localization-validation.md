@@ -13,7 +13,7 @@ The validated joins are:
 | Sigil           | `gem`           | `Name`           | `text.msg`          |
 | Skill candidate | `ability`       | `Unk5`           | `text.msg`          |
 
-The `.msg` inputs are MessagePack documents. The validator decodes them locally and validates the `rows_[].column_.id_hash_`, `subid_hash_`, and `text_` fields with Zod before using them. Display-name joins use only rows with an empty `subid_hash_`; non-empty sub-identifiers represent other UI contexts and may reuse an identifier with different text. Candidate keys are trimmed consistently for coverage lookup, while rows that required trimming are counted as non-canonical and block automatic normalization. The validator reports counts only and never prints message identifiers, localized text, source payloads, or local paths.
+The `.msg` inputs are MessagePack documents. The validator decodes them locally and validates the `rows_[].column_.id_hash_`, `subid_hash_`, and `text_` fields with Zod before using them. Display-name joins use only rows with an empty `subid_hash_`; non-empty sub-identifiers represent other UI contexts and may reuse an identifier with different text. Within that display-name catalog, every identifier must map to exactly one text, so a duplicate identifier invalidates the input even when the current candidate tables do not reference it. Candidate keys are trimmed consistently for coverage lookup, while rows that required trimming are counted as non-canonical and block automatic normalization. The validator reports counts only and never prints message identifiers, localized text, source payloads, or local paths.
 
 ## Reproducible extraction
 
