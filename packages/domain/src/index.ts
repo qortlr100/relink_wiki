@@ -17,12 +17,17 @@ export const characterSchema = z.object({
 export const publicCharacterSchema = characterSchema
   .pick({ id: true, slug: true, nameKo: true })
   .extend({ reviewState: z.literal("published") });
+export const publicRecordSchema = publicCharacterSchema;
 export const publicSnapshotSchema = z.object({
   schemaVersion: z.literal(1),
   contentRevision: z.string().min(1),
   generatedAt: z.iso.datetime(),
   sourceRevision: z.string().min(1),
   characters: z.array(publicCharacterSchema),
+  weapons: z.array(publicRecordSchema),
+  sigils: z.array(publicRecordSchema),
+  skills: z.array(publicRecordSchema),
 });
 export type Character = z.infer<typeof characterSchema>;
+export type PublicRecord = z.infer<typeof publicRecordSchema>;
 export type PublicSnapshot = z.infer<typeof publicSnapshotSchema>;
