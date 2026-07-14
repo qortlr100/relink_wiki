@@ -72,7 +72,7 @@ Create folders only when they contain real implementation. Do not add empty scaf
 - Never upload extracted data to an external service unless the user explicitly authorizes that exact publication.
 - Treat all extracted records as private until they pass an explicit review state.
 - Public output must be generated from an allowlist schema. Do not publish by copying whole source records and deleting a few known fields.
-- Store provenance for normalized records: game version, source file identifier, extractor version, import timestamp, and schema version.
+- Store provenance for normalized records: source file identifier, extractor version, import run ID, import timestamp, and schema version. Do not require a game-version catalog unless development reveals a real compatibility need.
 - Do not modify the installed game or its `data.i` during read-only mining workflows.
 
 ## 6. Public/private separation
@@ -138,13 +138,16 @@ Do not claim a check passed if it was not run. Explain unavailable checks briefl
 - Prefer a draft pull request for substantial work.
 - Do not mix generated public snapshots with unrelated source changes.
 
-## 10. Versioning and compatibility
+## 10. Versioning, backup, and compatibility
 
 - Pin the GBFRDataTools version used for an import and store it in import metadata.
+- Do not maintain game-version history by default. The project targets the current final content state; record an exceptional compatibility label only when a development-time transition changes parsing or normalized meaning.
 - Every normalized database change requires a migration.
-- Every public snapshot includes `schemaVersion`, `gameVersion`, `generatedAt`, and `sourceRevision`.
+- Every public snapshot includes `schemaVersion`, `contentRevision`, `generatedAt`, and `sourceRevision`.
 - Readers must fail clearly on unsupported schema versions.
 - Do not silently reinterpret old fields. Migrate them or keep explicit compatibility handling.
+- Keep the active SQLite database on the Windows PC and back it up to NAS before destructive migrations, accepted-import replacement, or publication.
+- Retain NAS backups indefinitely unless the user later defines a retention policy. Backup cleanup must never be automated under the current policy.
 
 ## 11. Definition of done
 
