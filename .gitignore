@@ -1,0 +1,39 @@
+# Local game data
+data/raw/
+data/local/
+data/exports/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Extracted game assets
+*.pak
+*.ucas
+*.utoc
+*.wem
+*.bnk
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies and builds
+node_modules/
+dist/
+.output/
+.next/
+coverage/
+
+# Logs and temporary files
+*.log
+tmp/
+.cache/
+
+# OS and editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
