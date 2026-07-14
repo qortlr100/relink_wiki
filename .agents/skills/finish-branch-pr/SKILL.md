@@ -57,10 +57,11 @@ For an unqualified request to finish or ship completed work, run the complete wo
 - Keep the pull request in draft. Do not perform a Codex review or mark it ready in this workflow.
 - When Codex scheduled tasks and the GitHub integration are available, create a recurring monitor attached to the current task. Run it every 10 minutes and invoke `$pr-babysitter` with:
   - the repository full name and pull request number;
-  - the expected external review workflow `Claude Code Review` and check `review`;
-  - instructions to enable GitHub auto-merge after every gate passes.
+  - the expected head and base branch names plus the current head SHA authorized by this finish request;
+  - the expected external review workflow `Claude Code Review`, check `review`, producer app slug `github-actions`, producer app ID `15368`, and trusted workflow path `.github/workflows/claude-review.yml` from the base revision;
+  - instructions to enable GitHub auto-merge only when every gate passes and GitHub provides a head-bound mutation or verified server-side merge protection.
 - Inspect existing scheduled tasks first and update a matching monitor instead of creating a duplicate.
-- If monitoring cannot be scheduled, leave the PR as a draft and report the exact missing capability or permission.
+- If monitoring cannot be scheduled or GitHub cannot enforce the reviewed head at merge time, leave the PR as a draft and report the exact missing capability or permission.
 - Return the branch name, commit identifier, PR URL, draft state, checks run, monitoring state, remaining risks, and any manual follow-up.
 
 ## Stop conditions
