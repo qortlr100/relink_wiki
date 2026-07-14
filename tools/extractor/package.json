@@ -7,10 +7,14 @@
   },
   "scripts": {
     "build": "tsc --noEmit",
+    "preflight": "tsx src/cli.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
     "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "tsx": "4.20.6"
   }
 }

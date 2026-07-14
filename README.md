@@ -29,6 +29,14 @@ pnpm dev:admin
 
 관리 도구는 기본적으로 `127.0.0.1:3100`에만 바인딩됩니다. 추출기 설정은 `.env.example`을 참고하되 실제 경로와 데이터는 커밋하지 않습니다.
 
+GBFRDataTools를 사용하기 전에는 비공개 `.env`를 로드한 셸에서 실행 전 점검을 통과해야 합니다.
+
+```bash
+pnpm --filter @relink-wiki/extractor preflight
+```
+
+고정 버전, 런타임 요구 사항, 읽기 전용 샘플 명령과 현재 호환성 제한은 [`docs/extractor-validation.md`](docs/extractor-validation.md)를 참고하세요.
+
 ## 검증
 
 ```bash
