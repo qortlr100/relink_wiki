@@ -96,7 +96,7 @@ h3 {
   font-family: Georgia, "Noto Serif KR", serif;
 }
 h1 {
-  max-width: 760px;
+  max-width: 900px;
   margin: 18px 0 22px;
   font-size: clamp(3.1rem, 7vw, 6rem);
   line-height: 1.05;
@@ -148,13 +148,16 @@ h1 {
   color: #9fb0bd;
   font-size: 0.84rem;
 }
-.search-results article {
+.search-results > a {
   display: grid;
   grid-template-columns: 100px 1fr auto;
   gap: 12px;
   align-items: center;
   padding: 12px 0;
   border-top: 1px solid #ffffff12;
+}
+.search-results > a:hover strong {
+  color: #f0d895;
 }
 .search-results span,
 .search-results small {
@@ -286,6 +289,158 @@ footer span {
     serif;
   letter-spacing: 0.17em;
 }
+.inner-page {
+  width: min(1180px, calc(100% - 48px));
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 48px 0 100px;
+}
+.back-link {
+  display: inline-block;
+  margin-bottom: 72px;
+  color: #d5b663;
+  font-size: 0.82rem;
+}
+.page-heading {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding-bottom: 48px;
+  border-bottom: 1px solid #d9bc7140;
+}
+.page-heading h1,
+.record-detail h1,
+.prominent h1 {
+  margin: 8px 0 12px;
+  font-size: clamp(2.8rem, 7vw, 5.5rem);
+  font-weight: 500;
+  line-height: 1.05;
+}
+.page-heading > .category-symbol {
+  width: 76px;
+  height: 76px;
+  flex: 0 0 auto;
+  font-size: 1.8rem;
+}
+.page-heading p:last-child,
+.detail-lead {
+  margin: 0;
+  color: #91a4b3;
+}
+.list-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 180px;
+  gap: 16px;
+  margin-top: 42px;
+}
+.list-controls label {
+  display: grid;
+  gap: 8px;
+  color: #9babb7;
+  font-size: 0.72rem;
+}
+.list-controls input,
+.list-controls select {
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid #d9bc7140;
+  border-radius: 0;
+  background: #0c1d2c;
+  color: #f6f1e4;
+  font: inherit;
+}
+.result-count {
+  margin: 22px 0;
+  color: #718696;
+  font-size: 0.78rem;
+}
+.record-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.record-card {
+  min-height: 210px;
+  padding: 26px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #d9bc7138;
+  background: linear-gradient(135deg, #10263a, #0b1b2b);
+}
+.record-card:hover {
+  border-color: #d9bc7190;
+  background: #142d43;
+}
+.record-card > span {
+  color: #d5b663;
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+}
+.record-card h2 {
+  margin: 26px 0 8px;
+  font-size: 1.8rem;
+}
+.record-card code {
+  color: #7f93a4;
+  font-size: 0.72rem;
+}
+.record-card strong {
+  margin-top: auto;
+  color: #d5b663;
+  font-size: 0.78rem;
+}
+.empty-state {
+  padding: 56px 28px;
+  border: 1px solid #d9bc7138;
+  text-align: center;
+  background: #0b1b2b;
+}
+.empty-state h2 {
+  font-size: 1.8rem;
+}
+.empty-state p {
+  color: #8fa1b0;
+}
+.prominent {
+  padding: 100px 28px;
+}
+.record-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.7fr);
+  gap: 80px;
+  align-items: end;
+  padding: 70px 0;
+  border-bottom: 1px solid #d9bc7140;
+}
+.record-detail dl {
+  margin: 0;
+}
+.record-detail dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 16px 0;
+  border-bottom: 1px solid #ffffff12;
+}
+.record-detail dt {
+  color: #7f93a4;
+  font-size: 0.76rem;
+}
+.record-detail dd {
+  margin: 0;
+  color: #e6cc83;
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+.detail-note {
+  margin-top: 24px;
+  padding: 18px;
+  border-left: 2px solid #d5b663;
+  color: #8fa1b0;
+  background: #0b1b2b;
+  font-size: 0.82rem;
+  line-height: 1.7;
+}
 .sr-only {
   position: absolute;
   width: 1px;
@@ -327,11 +482,37 @@ footer span {
     min-width: 0;
     width: 100%;
   }
-  .search-results article {
+  .search-results > a {
     grid-template-columns: 78px 1fr;
   }
   .search-results small {
     display: none;
+  }
+  .inner-page {
+    width: min(100% - 32px, 1180px);
+    padding-top: 30px;
+  }
+  .back-link {
+    margin-bottom: 44px;
+  }
+  .page-heading {
+    align-items: flex-start;
+  }
+  .page-heading > .category-symbol {
+    width: 50px;
+    height: 50px;
+    font-size: 1.2rem;
+  }
+  .list-controls,
+  .record-detail {
+    grid-template-columns: 1fr;
+  }
+  .record-grid {
+    grid-template-columns: 1fr;
+  }
+  .record-detail {
+    gap: 42px;
+    padding-top: 36px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

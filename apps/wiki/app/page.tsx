@@ -1,38 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { publicSnapshotSchema, type PublicRecord } from "@relink-wiki/domain";
-
-const snapshot = publicSnapshotSchema.parse({
-  schemaVersion: 1,
-  contentRevision: "sample-2026-07-14",
-  generatedAt: "2026-07-14T00:00:00.000Z",
-  sourceRevision: "sample",
-  characters: [
-    { id: "character-gran", slug: "gran", nameKo: "그랑", reviewState: "published" },
-    { id: "character-djeeta", slug: "djeeta", nameKo: "지타", reviewState: "published" },
-  ],
-  weapons: [
-    { id: "weapon-sword", slug: "traveler-sword", nameKo: "여행자의 검", reviewState: "published" },
-  ],
-  sigils: [
-    { id: "sigil-attack", slug: "attack-power", nameKo: "공격력", reviewState: "published" },
-  ],
-  skills: [
-    { id: "skill-reginleiv", slug: "reginleiv", nameKo: "레긴레이브", reviewState: "published" },
-  ],
-});
-
-const categories = [
-  { key: "characters", label: "캐릭터", symbol: "✦", description: "플레이어블 캐릭터와 전투 역할" },
-  { key: "weapons", label: "무기", symbol: "◇", description: "무기 유형과 핵심 능력치" },
-  { key: "sigils", label: "진", symbol: "✧", description: "진 효과와 장착 조건" },
-  { key: "skills", label: "스킬·어빌리티", symbol: "✺", description: "전투 기술과 관련 캐릭터" },
-] as const;
-
-const searchableRecords: (PublicRecord & { category: string })[] = categories.flatMap((category) =>
-  snapshot[category.key].map((record) => ({ ...record, category: category.label })),
-);
+import {
+  catalogRecords,
+  categories,
+  getRecordHref,
+  publicSnapshot as snapshot,
+} from "./archive/catalog";
 
 export default function Home() {
   const [query, setQuery] = useState("");
@@ -41,8 +15,8 @@ export default function Home() {
     () =>
       normalizedQuery.length === 0
         ? []
-        : searchableRecords.filter((record) =>
-            `${record.nameKo} ${record.slug} ${record.category}`
+        : catalogRecords.filter((record) =>
+            `${record.nameKo} ${record.slug} ${record.categoryLabel}`
               .toLocaleLowerCase("ko")
               .includes(normalizedQuery),
           ),
@@ -94,11 +68,11 @@ export default function Home() {
                 : "일치하는 공개 기록이 없습니다."}
             </p>
             {results.map((record) => (
-              <article key={record.id}>
-                <span>{record.category}</span>
+              <a href={getRecordHref(record)} key={record.id}>
+                <span>{record.categoryLabel}</span>
                 <strong>{record.nameKo}</strong>
                 <small>{record.slug}</small>
-              </article>
+              </a>
             ))}
           </div>
         )}
@@ -110,11 +84,11 @@ export default function Home() {
             <p className="eyebrow">BROWSE THE ARCHIVE</p>
             <h2>분류별 탐색</h2>
           </div>
-          <p>현재 공개된 샘플 기록 {searchableRecords.length}개</p>
+          <p>현재 공개된 샘플 기록 {catalogRecords.length}개</p>
         </div>
         <div className="category-grid">
           {categories.map((category) => (
-            <article className="category-card" key={category.key}>
+            <a className="category-card" href={`/archive/${category.key}`} key={category.key}>
               <span className="category-symbol" aria-hidden="true">
                 {category.symbol}
               </span>
@@ -126,7 +100,7 @@ export default function Home() {
                 {snapshot[category.key].length}
                 <small> records</small>
               </strong>
-            </article>
+            </a>
           ))}
         </div>
       </section>
