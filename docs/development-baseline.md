@@ -62,6 +62,8 @@ Stages must be independently repeatable and must not infer success from file exi
 
 The current version 1 prototype snapshot is validated by `publicSnapshotSchema` in `packages/domain`. It contains the four allowlisted collections `characters`, `weapons`, `sigils`, and `skills` together with `schemaVersion`, `contentRevision`, `generatedAt`, and `sourceRevision`. Prototype records expose only their public identifier, slug, Korean display name, and the literal `published` review state.
 
+The wiki imports `apps/wiki/public/data/public-snapshot.v1.json` as a build-time static asset and validates the complete value before deriving search, list, and detail records. Invalid records or unsupported schema versions fail with the stable `PUBLIC_SNAPSHOT_INVALID` error code. The loader does not access the filesystem, local database, extractor output, or mining admin at runtime. Replace this file only with an explicitly reviewed publisher output; its current contents remain prototype sample records rather than a real game-data release.
+
 This prototype contract is intentionally smaller than the final publication manifest. Before the first real data release, the publisher will add and validate release metadata similar to:
 
 ```ts
@@ -81,6 +83,12 @@ type SnapshotManifest = {
 The final publication manifest schema will be defined with Zod and inferred into TypeScript when the publisher is implemented. Public DTOs are allowlists and must not reuse private database row types directly. Do not treat the in-app sample snapshot as a generated public release.
 
 The project does not maintain a normal game-version history because it targets the expected final content state. If a development-time game transition changes extraction or normalized semantics, record a one-off compatibility label on that import rather than introducing a permanent version catalog.
+
+## Public wiki visual verification
+
+Browser verification for the public snapshot flow must cover the home page, category list, record detail, search, category filtering, and sorting. Check both the default desktop viewport and a 390 × 844 mobile viewport. Confirm that the mobile layout has no horizontal overflow, category cards collapse to one column, snapshot metadata remains readable, and record details collapse to one column. Review browser console warnings and errors during the same run.
+
+The snapshot loader integration was visually verified on 2026-07-14 with the prototype snapshot. The home page rendered all five records and snapshot metadata; searching for `그랑` returned the single expected record; the character list filter returned only `지타`; slug sorting produced `djeeta` before `gran`; and the `gran` detail route displayed its public identifier, slug, and published state. Desktop and mobile layouts showed no clipping or overlap, the 390-pixel viewport had no horizontal overflow, and the browser console reported no warnings or errors.
 
 ## Initial quality commands
 
