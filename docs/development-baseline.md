@@ -43,6 +43,7 @@ The implemented extractor commands read these settings:
 - `RELINK_CANDIDATE_DATABASE_PATH`: private GBFRDataTools candidate SQLite input;
 - `RELINK_DATABASE_PATH`: private Relink Wiki SQLite database;
 - `RELINK_NORMALIZATION_MAPPING_PATH`: private mapped-normalization JSON input.
+- `RELINK_KOREAN_MESSAGE_DIRECTORY_PATH`: private directory containing the extracted Korean `text.msg` and `text_chara.msg` files used by the read-only localization join validator.
 
 Snapshot output and log-level settings are not implemented. Add them to `.env.example` only when the publisher or structured logging code consumes and validates them.
 
@@ -54,21 +55,23 @@ The currently validated extraction baseline pins GBFRDataTools `2.0.0` and requi
 
 Each stage has a separate input/output contract. The current repository status is:
 
-| Stage         | Status      | Current contract                                                                                                  |
-| ------------- | ----------- | ----------------------------------------------------------------------------------------------------------------- |
-| **extract**   | Partial     | Preflight and a documented read-only GBFRDataTools workflow exist; the repository does not invoke extraction yet. |
-| **import**    | Implemented | Imports four allowlisted candidate tables into private staging records with provenance and idempotency.           |
-| **normalize** | Implemented | Maps explicitly selected staging rows into versioned `staged` normalized records.                                 |
-| **diff**      | Not started | Will compare a candidate normalization with the accepted local version.                                           |
-| **review**    | Not started | Will record explicit operator decisions in the local-only surface.                                                |
-| **publish**   | Not started | Will generate allowlisted public DTOs and a versioned manifest after preview.                                     |
-| **verify**    | Partial     | Domain and wiki loaders validate the prototype snapshot; generated-release verification is not built.             |
+| Stage         | Status      | Current contract                                                                                                                                                      |
+| ------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **extract**   | Partial     | Preflight and a documented read-only GBFRDataTools workflow exist; the repository does not invoke extraction yet.                                                     |
+| **import**    | Implemented | Imports four allowlisted candidate tables into private staging records with provenance and idempotency.                                                               |
+| **normalize** | Implemented | Maps explicitly selected staging rows into versioned `staged` normalized records; Korean display-name joins are reproducibly validated but not applied automatically. |
+| **diff**      | Not started | Will compare a candidate normalization with the accepted local version.                                                                                               |
+| **review**    | Not started | Will record explicit operator decisions in the local-only surface.                                                                                                    |
+| **publish**   | Not started | Will generate allowlisted public DTOs and a versioned manifest after preview.                                                                                         |
+| **verify**    | Partial     | Domain and wiki loaders validate the prototype snapshot; generated-release verification is not built.                                                                 |
 
 Stages must be independently repeatable and must not infer success from file existence alone.
 
 The first import increment reads only the allowlisted `chara`, `weapon`, `gem`, and `ability` tables from a GBFRDataTools candidate SQLite database. It stores every accepted source row as a private staging JSON payload, joined to an import run that records the extractor version, import timestamp, and staging schema version. A content fingerprint makes exact reruns reuse the original atomic import instead of duplicating runs or rows. The known `skill.tbl` incompatibility is retained as an `SKILL_TABLE_INCOMPATIBLE` warning. See [`staging-import.md`](staging-import.md) for the executable contract and current limits.
 
 The first normalization increment accepts a private, explicitly curated mapping file for selected staging rows. It derives category and provenance from the selected import, validates the Korean display name and public identifiers, and writes only `staged` normalized records. The mapping and source payload hashes form an idempotency fingerprint, so identical reruns reuse the original normalization run. It does not infer localization joins or publish data. See [`normalization.md`](normalization.md).
+
+The read-only localization validator establishes the current `chara.CharaName`, `weapon.Name`, `gem.Name`, and `ability.Unk5` joins against the extracted Korean message catalogs. It reports only coverage counts and keeps unresolved or empty-key rows out of automatic normalization. See [`localization-validation.md`](localization-validation.md).
 
 ## Public snapshot contract
 

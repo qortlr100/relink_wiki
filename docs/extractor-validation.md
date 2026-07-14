@@ -38,7 +38,7 @@ The pinned release successfully opened the current local archive and converted t
 
 `system/table/skill.tbl` was extracted but did not convert. GBFRDataTools reported that the table was larger than its expected layout. Treat `skill.tbl` as incompatible with release `2.0.0`; do not silently discard it or infer its schema. The importer should start from `ability.tbl` for the skill candidate set while keeping the `skill.tbl` incompatibility visible as a structured import warning.
 
-Korean display names are not established by these four structural tables. Localization message paths and identifier joins require a separate mapping investigation before normalized records can be published.
+Korean display names are not present as directly usable values in these four structural tables. The current message paths and identifier joins are validated separately in [`localization-validation.md`](localization-validation.md); automatic localized normalization remains disabled until placeholder rows and the unresolved weapon key have an explicit policy.
 
 ## Configuration and preflight
 
