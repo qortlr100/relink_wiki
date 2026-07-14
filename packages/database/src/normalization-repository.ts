@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import { normalizedRecordSchema } from "@relink-wiki/domain";
+import { normalizedRecordSchema, recordIdSchema } from "@relink-wiki/domain";
 import { z } from "zod";
 import type { openDatabase } from "./index";
 import { importRuns, normalizationRuns, normalizedRecords, stagingRecords } from "./schema";
@@ -16,7 +16,7 @@ const sourceCategory = {
 export const normalizationMappingRecordSchema = z.object({
   sourceTable: stagingSourceTableSchema,
   sourceRecordId: z.string().min(1),
-  id: z.string().min(1),
+  id: recordIdSchema,
   slug: z.string().regex(/^[a-z0-9-]+$/),
   nameKo: z.string().trim().min(1),
 });
@@ -61,7 +61,8 @@ export const mappedNormalizationSchema = z.object({
 export type MappedNormalization = z.infer<typeof mappedNormalizationSchema>;
 type RelinkDatabase = ReturnType<typeof openDatabase>["db"];
 
-export type NormalizationErrorCode = "IMPORT_RUN_NOT_FOUND" | "STAGING_RECORD_NOT_FOUND";
+export type NormalizationErrorCode =
+  "NORMALIZATION_INPUT_INVALID" | "IMPORT_RUN_NOT_FOUND" | "STAGING_RECORD_NOT_FOUND";
 
 export class NormalizationError extends Error {
   constructor(
@@ -86,7 +87,18 @@ function hash(value: string): string {
 }
 
 export function normalizeMappedRecords(db: RelinkDatabase, input: unknown): NormalizationResult {
-  const candidate = mappedNormalizationSchema.parse(input);
+  const validation = mappedNormalizationSchema.safeParse(input);
+  if (!validation.success) {
+    const issueDetails = validation.error.issues
+      .slice(0, 5)
+      .map((issue) => `${issue.path.join(".") || "입력"}: ${issue.message}`)
+      .join("; ");
+    throw new NormalizationError(
+      "NORMALIZATION_INPUT_INVALID",
+      `정규화 입력이 올바르지 않습니다: ${issueDetails}`,
+    );
+  }
+  const candidate = validation.data;
 
   return db.transaction((transaction) => {
     const importRun = transaction

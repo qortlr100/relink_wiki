@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { normalizedRecordSchema, publicSnapshotSchema } from "./index";
+import { normalizedRecordSchema, publicSnapshotSchema, recordIdSchema } from "./index";
+
+describe("recordIdSchema", () => {
+  it("keeps the identifier format open while rejecting unsafe strings", () => {
+    expect(recordIdSchema.safeParse("Character_한글").success).toBe(true);
+    expect(recordIdSchema.safeParse(" character-10").success).toBe(false);
+    expect(recordIdSchema.safeParse("character\n10").success).toBe(false);
+    expect(recordIdSchema.safeParse("x".repeat(129)).success).toBe(false);
+  });
+});
+
 describe("publicSnapshotSchema", () => {
   it("rejects unreviewed public records", () => {
     const result = publicSnapshotSchema.safeParse({

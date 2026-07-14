@@ -44,7 +44,7 @@ Store the mapping outside Git, preferably under the ignored `data/local/` area o
 }
 ```
 
-The mapping file is an untrusted boundary and is fully validated with Zod. Source rows must belong to the selected import. Within one normalization run, source rows, category IDs, and category slugs must be unique. Partial mappings are allowed and the command reports how many staging rows remain unmapped.
+The mapping file is an untrusted boundary and is fully validated with Zod. Source rows must belong to the selected import. Within one normalization run, source rows, category IDs, and category slugs must be unique. Normalized IDs are limited to 128 characters and reject leading or trailing whitespace and control or format characters; their canonical source-specific format remains open until identifier joins are established with reproducible evidence. Partial mappings are allowed and the command reports how many staging rows remain unmapped.
 
 ## Run
 
@@ -61,6 +61,7 @@ The idempotency fingerprint covers the selected import, normalization schema ver
 ## Failure contract
 
 - `NORMALIZATION_MAPPING_INVALID`: the local JSON cannot be read or does not satisfy the mapping schema;
+- `NORMALIZATION_INPUT_INVALID`: the normalization repository received input that does not satisfy its schema;
 - `IMPORT_RUN_NOT_FOUND`: the selected private import run does not exist;
 - `STAGING_RECORD_NOT_FOUND`: a mapping does not refer to a staging row in the selected import;
 - `DATABASE_MIGRATION_CHANGED`: an already-applied migration no longer matches its stored checksum;

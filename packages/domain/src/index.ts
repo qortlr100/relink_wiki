@@ -1,6 +1,24 @@
 import { z } from "zod";
 export const reviewStateSchema = z.enum(["staged", "reviewed", "published"]);
 export const normalizedCategorySchema = z.enum(["character", "weapon", "sigil", "skill"]);
+export const recordIdSchema = z
+  .string()
+  .min(1, "식별자는 비어 있을 수 없습니다.")
+  .max(128, "식별자는 128자 이하여야 합니다.")
+  .superRefine((identifier, context) => {
+    if (identifier !== identifier.trim()) {
+      context.addIssue({
+        code: "custom",
+        message: "식별자는 앞뒤 공백을 포함할 수 없습니다.",
+      });
+    }
+    if (/[\p{Cc}\p{Cf}]/u.test(identifier)) {
+      context.addIssue({
+        code: "custom",
+        message: "식별자는 제어 문자를 포함할 수 없습니다.",
+      });
+    }
+  });
 export const provenanceSchema = z.object({
   sourceFileId: z.string().min(1),
   extractorVersion: z.string().min(1),
@@ -13,14 +31,14 @@ export const normalizedProvenanceSchema = provenanceSchema.extend({
 });
 export const normalizedRecordSchema = z.object({
   category: normalizedCategorySchema,
-  id: z.string().min(1),
+  id: recordIdSchema,
   slug: z.string().regex(/^[a-z0-9-]+$/),
   nameKo: z.string().trim().min(1),
   reviewState: reviewStateSchema,
   provenance: normalizedProvenanceSchema,
 });
 export const characterSchema = z.object({
-  id: z.string().min(1),
+  id: recordIdSchema,
   slug: z.string().regex(/^[a-z0-9-]+$/),
   nameKo: z.string().min(1),
   reviewState: reviewStateSchema,

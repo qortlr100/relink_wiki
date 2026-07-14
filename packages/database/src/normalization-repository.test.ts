@@ -152,8 +152,34 @@ describe("normalizeMappedRecords", () => {
       nameKo: "지타",
     });
 
-    expect(() => normalizeMappedRecords(connection.db, input)).toThrow(
-      "slug 매핑이 중복되었습니다.",
-    );
+    try {
+      normalizeMappedRecords(connection.db, input);
+      throw new Error("The invalid normalization input should have failed.");
+    } catch (error) {
+      expect(error).toMatchObject({ code: "NORMALIZATION_INPUT_INVALID" });
+      expect(String(error)).toContain("records.1: slug 매핑이 중복되었습니다.");
+    }
+  });
+
+  it("reports unsafe record IDs with a stable normalization error", () => {
+    const connection = openDatabase({ path: ":memory:" });
+    openConnections.push(connection);
+    applyMigrations(connection.sqlite);
+    const stagingImport = createStagingImport();
+    importStagingRecords(connection.db, stagingImport);
+    const input = createNormalization(stagingImport.importRunId);
+    const [firstRecord] = input.records;
+    if (!firstRecord) {
+      throw new Error("The normalization fixture must contain a record.");
+    }
+    firstRecord.id = "character\n10";
+
+    try {
+      normalizeMappedRecords(connection.db, input);
+      throw new Error("The invalid normalization input should have failed.");
+    } catch (error) {
+      expect(error).toMatchObject({ code: "NORMALIZATION_INPUT_INVALID" });
+      expect(String(error)).toContain("records.0.id: 식별자는 제어 문자를 포함할 수 없습니다.");
+    }
   });
 });
