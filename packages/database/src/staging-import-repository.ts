@@ -45,22 +45,7 @@ export function importStagingRecords(db: RelinkDatabase, input: unknown): Stagin
   const candidateImport = stagingImportSchema.parse(input);
 
   return db.transaction((transaction) => {
-    const existingRun = transaction
-      .select({ id: importRuns.id })
-      .from(importRuns)
-      .where(eq(importRuns.inputFingerprint, candidateImport.inputFingerprint))
-      .get();
-
-    if (existingRun) {
-      return {
-        importRunId: existingRun.id,
-        reused: true,
-        recordCount: candidateImport.records.length,
-        warningCount: candidateImport.warnings.length,
-      };
-    }
-
-    transaction
+    const insertResult = transaction
       .insert(importRuns)
       .values({
         id: candidateImport.importRunId,
@@ -69,7 +54,27 @@ export function importStagingRecords(db: RelinkDatabase, input: unknown): Stagin
         importedAt: candidateImport.importedAt,
         schemaVersion: candidateImport.schemaVersion,
       })
+      .onConflictDoNothing({ target: importRuns.inputFingerprint })
       .run();
+
+    if (insertResult.changes === 0) {
+      const existingRun = transaction
+        .select({ id: importRuns.id })
+        .from(importRuns)
+        .where(eq(importRuns.inputFingerprint, candidateImport.inputFingerprint))
+        .get();
+
+      if (!existingRun) {
+        throw new Error("The conflicting import run could not be read.");
+      }
+
+      return {
+        importRunId: existingRun.id,
+        reused: true,
+        recordCount: candidateImport.records.length,
+        warningCount: candidateImport.warnings.length,
+      };
+    }
 
     if (candidateImport.records.length > 0) {
       transaction

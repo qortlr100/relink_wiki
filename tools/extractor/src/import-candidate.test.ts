@@ -13,7 +13,7 @@ afterEach(() => {
   }
 });
 
-function createFixture(options: { omitAbility?: boolean } = {}) {
+function createFixture(options: { omitAbility?: boolean; abilityWithoutRowId?: boolean } = {}) {
   const root = mkdtempSync(join(tmpdir(), "relink-import-"));
   temporaryRoots.push(root);
   const privateDirectory = join(root, "private");
@@ -26,7 +26,13 @@ function createFixture(options: { omitAbility?: boolean } = {}) {
     CREATE TABLE chara (CharacterId INTEGER, InternalName TEXT);
     CREATE TABLE weapon (WeaponId INTEGER, OwnerId INTEGER);
     CREATE TABLE gem (GemId INTEGER, Category INTEGER);
-    ${options.omitAbility ? "" : "CREATE TABLE ability (AbilityId INTEGER, CharacterId INTEGER);"}
+    ${
+      options.omitAbility
+        ? ""
+        : options.abilityWithoutRowId
+          ? "CREATE TABLE ability (AbilityId INTEGER PRIMARY KEY, CharacterId INTEGER) WITHOUT ROWID;"
+          : "CREATE TABLE ability (AbilityId INTEGER, CharacterId INTEGER);"
+    }
     INSERT INTO chara VALUES (10, 'pl0000');
     INSERT INTO weapon VALUES (20, 10);
     INSERT INTO gem VALUES (30, 2);
@@ -82,6 +88,40 @@ describe("importCandidateDatabase", () => {
     } catch (error) {
       expect(error).toMatchObject({ code: "CANDIDATE_TABLE_MISSING" });
       expect(String(error)).not.toContain(config.candidateDatabasePath);
+    }
+  });
+
+  it("rejects using the candidate database as the writable target before changing it", () => {
+    const config = createFixture();
+    const conflictingConfig = {
+      ...config,
+      targetDatabasePath: config.candidateDatabasePath,
+    };
+
+    expect(() => importCandidateDatabase(conflictingConfig)).toThrow(CandidateImportError);
+    try {
+      importCandidateDatabase(conflictingConfig);
+    } catch (error) {
+      expect(error).toMatchObject({ code: "CANDIDATE_TARGET_PATH_CONFLICT" });
+    }
+
+    const candidate = new Database(config.candidateDatabasePath, { readonly: true });
+    const internalTables = candidate
+      .prepare("SELECT name FROM sqlite_master WHERE name LIKE '_relink_%'")
+      .all();
+    candidate.close();
+    expect(internalTables).toEqual([]);
+  });
+
+  it("maps an unsupported source table structure to a stable error", () => {
+    const config = createFixture({ abilityWithoutRowId: true });
+
+    expect(() => importCandidateDatabase(config)).toThrow(CandidateImportError);
+    try {
+      importCandidateDatabase(config);
+    } catch (error) {
+      expect(error).toMatchObject({ code: "CANDIDATE_TABLE_INVALID" });
+      expect(String(error)).not.toContain("no such column");
     }
   });
 });

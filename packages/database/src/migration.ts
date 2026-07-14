@@ -38,18 +38,21 @@ export function applyMigrations(sqlite: Database.Database): void {
   for (const migration of migrations) {
     const sql = readFileSync(migration.path, "utf8");
     const checksum = createHash("sha256").update(sql).digest("hex");
-    const applied = findMigration.get(migration.id);
 
-    if (applied) {
-      if (applied.checksum !== checksum) {
-        throw new DatabaseMigrationError();
-      }
-      continue;
-    }
+    sqlite
+      .transaction(() => {
+        const applied = findMigration.get(migration.id);
 
-    sqlite.transaction(() => {
-      sqlite.exec(sql);
-      recordMigration.run(migration.id, checksum, new Date().toISOString());
-    })();
+        if (applied) {
+          if (applied.checksum !== checksum) {
+            throw new DatabaseMigrationError();
+          }
+          return;
+        }
+
+        sqlite.exec(sql);
+        recordMigration.run(migration.id, checksum, new Date().toISOString());
+      })
+      .immediate();
   }
 }

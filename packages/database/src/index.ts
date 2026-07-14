@@ -14,5 +14,6 @@ export function openDatabase(input: unknown) {
   const config = databaseConfigSchema.parse(input);
   const sqlite = new Database(config.path);
   sqlite.pragma("foreign_keys = ON");
+  sqlite.pragma("busy_timeout = 5000");
   return { sqlite, db: drizzle(sqlite, { schema }) };
 }

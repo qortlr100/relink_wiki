@@ -1,4 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
+import { existsSync, realpathSync, statSync } from "node:fs";
+import { resolve } from "node:path";
 import Database from "better-sqlite3";
 import {
   applyMigrations,
@@ -32,7 +34,11 @@ const candidateTables = [
 const sourceRowSchema = z.record(z.string(), z.union([z.string(), z.number(), z.null()]));
 
 export type CandidateImportErrorCode =
-  "CANDIDATE_DATABASE_INVALID" | "CANDIDATE_TABLE_MISSING" | "CANDIDATE_ROW_INVALID";
+  | "CANDIDATE_DATABASE_INVALID"
+  | "CANDIDATE_TARGET_PATH_CONFLICT"
+  | "CANDIDATE_TABLE_MISSING"
+  | "CANDIDATE_TABLE_INVALID"
+  | "CANDIDATE_ROW_INVALID";
 
 export class CandidateImportError extends Error {
   constructor(
@@ -55,6 +61,39 @@ export function readCandidateImportConfig(environment: NodeJS.ProcessEnv): Candi
 
 function hash(value: string): string {
   return createHash("sha256").update(value).digest("hex");
+}
+
+function normalizeDatabasePath(databasePath: string): string {
+  const resolvedPath = resolve(databasePath);
+  let canonicalPath = resolvedPath;
+
+  if (existsSync(resolvedPath)) {
+    try {
+      canonicalPath = realpathSync.native(resolvedPath);
+    } catch {
+      canonicalPath = resolvedPath;
+    }
+  }
+
+  return process.platform === "win32" ? canonicalPath.toLowerCase() : canonicalPath;
+}
+
+function pathsReferToSameFile(candidatePath: string, targetPath: string): boolean {
+  if (normalizeDatabasePath(candidatePath) === normalizeDatabasePath(targetPath)) {
+    return true;
+  }
+
+  if (!existsSync(candidatePath) || !existsSync(targetPath)) {
+    return false;
+  }
+
+  try {
+    const candidateStats = statSync(candidatePath);
+    const targetStats = statSync(targetPath);
+    return candidateStats.dev === targetStats.dev && candidateStats.ino === targetStats.ino;
+  } catch {
+    return false;
+  }
 }
 
 function sortPayload(payload: Record<string, string | number | null>) {
@@ -81,11 +120,20 @@ function readStagingRecords(sqlite: Database.Database): StagingImport["records"]
   }
 
   return candidateTables.flatMap((candidateTable) => {
-    const rows = sqlite
-      .prepare(
-        `SELECT rowid AS __relink_source_rowid, * FROM ${candidateTable.sourceTable} ORDER BY rowid`,
-      )
-      .all();
+    let rows: unknown[];
+
+    try {
+      rows = sqlite
+        .prepare(
+          `SELECT rowid AS __relink_source_rowid, * FROM ${candidateTable.sourceTable} ORDER BY rowid`,
+        )
+        .all();
+    } catch {
+      throw new CandidateImportError(
+        "CANDIDATE_TABLE_INVALID",
+        `후보 테이블 ${candidateTable.sourceTable}의 구조를 읽을 수 없습니다.`,
+      );
+    }
 
     return rows.map((input) => {
       const parsedRow = sourceRowSchema.safeParse(input);
@@ -133,6 +181,14 @@ function openCandidateDatabase(path: string): Database.Database {
 
 export function importCandidateDatabase(input: unknown): StagingImportResult {
   const config = candidateImportConfigSchema.parse(input);
+
+  if (pathsReferToSameFile(config.candidateDatabasePath, config.targetDatabasePath)) {
+    throw new CandidateImportError(
+      "CANDIDATE_TARGET_PATH_CONFLICT",
+      "후보 데이터베이스와 대상 데이터베이스는 서로 다른 파일이어야 합니다.",
+    );
+  }
+
   const candidateSqlite = openCandidateDatabase(config.candidateDatabasePath);
 
   try {

@@ -38,6 +38,13 @@ function createImport() {
 }
 
 describe("importStagingRecords", () => {
+  it("configures a lock wait for concurrent local imports", () => {
+    const connection = openDatabase({ path: ":memory:" });
+    openConnections.push(connection);
+
+    expect(connection.sqlite.pragma("busy_timeout", { simple: true })).toBe(5000);
+  });
+
   it("stores private rows with provenance and structured warnings", () => {
     const connection = openDatabase({ path: ":memory:" });
     openConnections.push(connection);
@@ -69,7 +76,7 @@ describe("importStagingRecords", () => {
     });
   });
 
-  it("reuses the original run when the same input fingerprint is imported again", () => {
+  it("atomically reuses the original run when the input fingerprint conflicts", () => {
     const connection = openDatabase({ path: ":memory:" });
     openConnections.push(connection);
     applyMigrations(connection.sqlite);
