@@ -47,3 +47,5 @@ The preferred long-term setup is:
 A static JSON snapshot can be used for the first prototype before introducing a deployment database.
 
 The version 1 public prototype snapshot exposes four allowlisted collections: `characters`, `weapons`, `sigils`, and `skills`. Each collection contains only its public identifier, slug, Korean display name, and the literal `published` review state. The wiki validates the complete snapshot before rendering it.
+
+The prototype wiki routes each allowlisted collection through `/archive/[category]` and each record through `/archive/[category]/[slug]`. Unknown categories and missing public records render an explicit recovery message. These routes consume only the validated public snapshot and never query local staging or admin storage.
