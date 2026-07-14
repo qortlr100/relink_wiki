@@ -61,6 +61,8 @@ Each stage has a separate input/output contract:
 
 Stages must be independently repeatable and must not infer success from file existence alone.
 
+The first import increment reads only the allowlisted `chara`, `weapon`, `gem`, and `ability` tables from a GBFRDataTools candidate SQLite database. It stores every accepted source row as a private staging JSON payload, joined to an import run that records the extractor version, import timestamp, and staging schema version. A content fingerprint makes exact reruns reuse the original atomic import instead of duplicating runs or rows. The known `skill.tbl` incompatibility is retained as an `SKILL_TABLE_INCOMPATIBLE` warning. See [`staging-import.md`](staging-import.md) for the executable contract and current limits.
+
 ## Public snapshot contract
 
 The current version 1 prototype snapshot is validated by `publicSnapshotSchema` in `packages/domain`. It contains the four allowlisted collections `characters`, `weapons`, `sigils`, and `skills` together with `schemaVersion`, `contentRevision`, `generatedAt`, and `sourceRevision`. Prototype records expose only their public identifier, slug, Korean display name, and the literal `published` review state.

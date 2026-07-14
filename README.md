@@ -37,6 +37,14 @@ pnpm --filter @relink-wiki/extractor preflight
 
 고정 버전, 런타임 요구 사항, 읽기 전용 샘플 명령과 현재 호환성 제한은 [`docs/extractor-validation.md`](docs/extractor-validation.md)를 참고하세요.
 
+변환된 후보 SQLite를 비공개 staging 데이터베이스로 가져오려면 `.env`에 후보 및 대상 데이터베이스 경로를 설정한 뒤 실행합니다.
+
+```bash
+pnpm --filter @relink-wiki/extractor import:candidate
+```
+
+임포트 계약, 재실행 동작과 현재 범위는 [`docs/staging-import.md`](docs/staging-import.md)를 참고하세요. 이 명령은 공개 스냅샷을 만들거나 발행하지 않습니다.
+
 ## 검증
 
 ```bash
