@@ -1,4 +1,4 @@
 interface:
-  display_name: "작업 완료 및 리뷰 준비"
-  short_description: "검증, 커밋, 드래프트 PR, 리뷰 준비 전환"
-  default_prompt: "Use $finish-branch-pr to validate and commit the completed work, open a draft PR, review it, address findings, and mark it ready for review."
+  display_name: "작업 완료 및 Draft PR"
+  short_description: "검증, 커밋, Draft PR 생성과 감시 예약"
+  default_prompt: "Use $finish-branch-pr to validate and commit the completed work, open a draft PR, and schedule external-review monitoring."

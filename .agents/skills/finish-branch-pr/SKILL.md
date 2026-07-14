@@ -1,13 +1,13 @@
 ---
 name: finish-branch-pr
-description: Finalize completed repository work by updating documentation, running checks, committing intended changes, pushing a work branch, opening a draft pull request, reviewing the remote PR diff, addressing findings, and marking the PR ready for review when clean. Use when implementation is complete and the user asks to finish, ship, commit, push, publish a branch, create a PR, or carry work through review-ready status. Respect explicit boundaries such as commit-only or push-only. Do not approve or merge pull requests.
+description: Finalize completed repository work by updating documentation, running checks, committing intended changes, pushing a work branch, opening a draft pull request, and scheduling external-review monitoring. Use when implementation is complete and the user asks to finish, ship, commit, push, publish a branch, or create a PR. Respect explicit boundaries such as commit-only, push-only, or draft-PR-only. Do not review, approve, mark ready, or merge pull requests.
 ---
 
 # Finish Branch PR
 
-Complete the handoff from finished local work to a review-ready pull request without widening the implementation scope. Follow repository instructions and the user's explicit scope over this generic workflow.
+Complete the handoff from finished local work to a monitored draft pull request without widening the implementation scope. Follow repository instructions and the user's explicit scope over this generic workflow.
 
-For an unqualified request to finish or ship completed work, run the complete workflow through ready-for-review status. For a request explicitly limited to commit, push, draft PR creation, or another boundary, stop at that boundary and report the remaining stages.
+For an unqualified request to finish or ship completed work, run the complete workflow through draft PR creation and monitoring setup. For a request explicitly limited to commit, push, draft PR creation without monitoring, or another boundary, stop at that boundary and report the remaining stages.
 
 ## Workflow
 
@@ -52,21 +52,17 @@ For an unqualified request to finish or ship completed work, run the complete wo
   - checks actually run and their results;
   - remaining risks, unavailable checks, and manual follow-up.
 
-### 6. Review the draft pull request
+### 6. Schedule external-review monitoring
 
-- Start a distinct review pass after the remote draft PR exists. Review the PR diff against its base from the remote PR surface, not only the local working tree.
-- When an independent reviewer agent is available, use it for the first review pass. Otherwise, reset authoring assumptions and perform a focused reviewer pass from the fetched PR diff.
-- Check for correctness, regressions, data safety, public/private boundary violations, missing validation, inadequate tests, stale documentation, unintended files, and mismatches between the PR body and actual checks.
-- Inspect required status checks and unresolved blocking review threads when the repository exposes them.
-- Report actionable findings by severity with precise file and line references. Do not invent findings to justify keeping the PR in draft.
-- If blocking findings are in scope, fix them, update tests or documentation, rerun affected checks, commit, push, and repeat the review pass.
-- If resolving a finding requires a new architectural decision, materially wider scope, unavailable credentials, or user authority, keep the PR in draft and stop with the blocker.
-
-### 7. Mark the pull request ready for review
-
-- Mark the PR ready for review only when the review pass has no unresolved blocking findings and required checks have passed or are explicitly not required by repository policy.
-- Verify that the PR is open and no longer a draft.
-- Return the branch name, commit identifier, PR URL, ready state, checks run, review outcome, remaining risks, and any non-blocking follow-up.
+- Keep the pull request in draft. Do not perform a Codex review or mark it ready in this workflow.
+- When Codex scheduled tasks and the GitHub integration are available, create a recurring monitor attached to the current task. Run it every 10 minutes and invoke `$pr-babysitter` with:
+  - the repository full name and pull request number;
+  - the expected head and base branch names plus the current head SHA authorized by this finish request;
+  - the expected external review workflow `Claude Code Review`, check `review`, producer app slug `github-actions`, producer app ID `15368`, and trusted workflow path `.github/workflows/claude-review.yml` from the base revision;
+  - instructions to enable GitHub auto-merge only when every gate passes and GitHub provides a head-bound mutation or verified server-side merge protection.
+- Inspect existing scheduled tasks first and update a matching monitor instead of creating a duplicate.
+- If monitoring cannot be scheduled or GitHub cannot enforce the reviewed head at merge time, leave the PR as a draft and report the exact missing capability or permission.
+- Return the branch name, commit identifier, PR URL, draft state, checks run, monitoring state, remaining risks, and any manual follow-up.
 
 ## Stop conditions
 
@@ -83,4 +79,4 @@ Explain the blocker and request only the decision or authority needed to continu
 
 ## Excluded follow-up
 
-Do not approve or merge the PR created by this workflow. Ready-for-review means the draft restriction has been removed; it does not mean the PR is approved. Merging requires a separate request, repository policy, and branch protection approval.
+Do not review, approve, mark ready, or merge the PR created by this workflow. The scheduled `$pr-babysitter` workflow owns readiness and auto-merge decisions after the external reviewer and CI have completed.
