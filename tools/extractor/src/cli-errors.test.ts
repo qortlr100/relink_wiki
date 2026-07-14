@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { CandidateImportError } from "./import-candidate";
 import { classifyCliFailure, readCliConfig } from "./cli-errors";
+import { NormalizationMappingError } from "./normalize-mapped";
 
 describe("classifyCliFailure", () => {
   it("keeps configuration validation separate from runtime failures", () => {
@@ -35,5 +36,12 @@ describe("classifyCliFailure", () => {
         new CandidateImportError("CANDIDATE_TABLE_INVALID", "후보 테이블 구조 오류"),
       ),
     ).toEqual({ code: "CANDIDATE_TABLE_INVALID", message: "후보 테이블 구조 오류" });
+  });
+
+  it("preserves stable normalization mapping errors", () => {
+    expect(classifyCliFailure(new NormalizationMappingError())).toEqual({
+      code: "NORMALIZATION_MAPPING_INVALID",
+      message: "정규화 매핑 파일을 읽거나 검증할 수 없습니다.",
+    });
   });
 });

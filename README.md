@@ -45,6 +45,14 @@ pnpm --filter @relink-wiki/extractor import:candidate
 
 임포트 계약, 재실행 동작과 현재 범위는 [`docs/staging-import.md`](docs/staging-import.md)를 참고하세요. 이 명령은 공개 스냅샷을 만들거나 발행하지 않습니다.
 
+비공개 staging 레코드 중 확인된 항목을 정규화하려면 로컬 전용 매핑 JSON을 준비하고 실행합니다.
+
+```bash
+pnpm --filter @relink-wiki/extractor normalize:mapped
+```
+
+정규화 입력 계약, 출처 보존, 재실행 동작과 자동 한국어 조인의 현재 제한은 [`docs/normalization.md`](docs/normalization.md)를 참고하세요. 정규화된 레코드는 항상 `staged` 상태로 시작하며 자동 발행되지 않습니다.
+
 ## 검증
 
 ```bash
