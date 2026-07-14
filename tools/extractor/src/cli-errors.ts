@@ -2,6 +2,7 @@ import { DatabaseMigrationError, NormalizationError } from "@relink-wiki/databas
 import { ZodError } from "zod";
 import { CandidateImportError } from "./import-candidate";
 import { NormalizationMappingError } from "./normalize-mapped";
+import { LocalizationValidationError } from "./validate-localization";
 
 export interface CliFailure {
   code: string;
@@ -39,7 +40,8 @@ export function classifyCliFailure(error: unknown): CliFailure {
     error instanceof CandidateImportError ||
     error instanceof DatabaseMigrationError ||
     error instanceof NormalizationError ||
-    error instanceof NormalizationMappingError
+    error instanceof NormalizationMappingError ||
+    error instanceof LocalizationValidationError
   ) {
     return { code: error.code, message: error.message };
   }

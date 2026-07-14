@@ -3,6 +3,7 @@ import { z } from "zod";
 import { CandidateImportError } from "./import-candidate";
 import { classifyCliFailure, readCliConfig } from "./cli-errors";
 import { NormalizationMappingError } from "./normalize-mapped";
+import { LocalizationValidationError } from "./validate-localization";
 
 describe("classifyCliFailure", () => {
   it("keeps configuration validation separate from runtime failures", () => {
@@ -42,6 +43,17 @@ describe("classifyCliFailure", () => {
     expect(classifyCliFailure(new NormalizationMappingError())).toEqual({
       code: "NORMALIZATION_MAPPING_INVALID",
       message: "정규화 매핑 파일을 읽거나 검증할 수 없습니다.",
+    });
+  });
+
+  it("preserves stable localization validation errors", () => {
+    expect(
+      classifyCliFailure(
+        new LocalizationValidationError("LOCALIZATION_MESSAGE_INVALID", "한국어 메시지 구조 오류"),
+      ),
+    ).toEqual({
+      code: "LOCALIZATION_MESSAGE_INVALID",
+      message: "한국어 메시지 구조 오류",
     });
   });
 });

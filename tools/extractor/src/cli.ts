@@ -4,6 +4,10 @@ import { importCandidateDatabase, readCandidateImportConfig } from "./import-can
 import { classifyCliFailure, readCliConfig } from "./cli-errors";
 import { normalizeMappedDatabase, readMappedNormalizationConfig } from "./normalize-mapped";
 import { inspectExtractorEnvironment } from "./preflight";
+import {
+  readLocalizationValidationConfig,
+  validateLocalizationJoins,
+} from "./validate-localization";
 
 try {
   const command = process.argv[2] ?? "preflight";
@@ -31,6 +35,17 @@ try {
         message: result.reused
           ? "동일한 정규화 입력을 이미 처리해 기존 실행을 재사용했습니다."
           : "명시적 매핑을 비공개 정규화 레코드로 저장했습니다.",
+        ...result,
+      }),
+    );
+  } else if (command === "validate-localization") {
+    const result = validateLocalizationJoins(
+      readCliConfig(() => readLocalizationValidationConfig(process.env)),
+    );
+    console.log(
+      JSON.stringify({
+        code: "LOCALIZATION_JOIN_VALIDATED",
+        message: "한국어 메시지 조인 범위를 검증했습니다.",
         ...result,
       }),
     );

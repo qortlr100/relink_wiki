@@ -16,6 +16,7 @@ This document describes the architecture that exists in the repository today. Fu
 1. The operator uses the pinned external GBFRDataTools release to read the locally installed game archives into a private output location.
 2. The extractor CLI imports four allowlisted candidate SQLite tables into private staging records.
 3. An explicit private mapping converts selected staging rows into versioned `staged` normalized records.
+   A separate read-only validator can measure Korean message join coverage without writing localized text or normalized records.
 4. **Not implemented:** the local admin compares versions and records explicit review decisions.
 5. **Not implemented:** a publisher generates a reviewed, allowlisted public snapshot with a preview or diff.
 6. The public wiki reads only the validated static snapshot bundled with its build. The current file is prototype sample data and is not generated from the local database.
