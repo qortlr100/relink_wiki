@@ -2,6 +2,13 @@
 
 Granblue Fantasy: Relink 데이터를 로컬에서 추출·검수하고, 승인된 정보만 공개하는 pnpm 모노레포입니다.
 
+## 현재 구현 범위
+
+- 공개 위키는 검증된 버전 1 정적 JSON 스냅샷에서 캐릭터, 무기, 진, 스킬의 검색·목록·상세 화면을 제공합니다. 저장소에 포함된 스냅샷은 UI 검증용 샘플이며 실제 게임 데이터 발행본이 아닙니다.
+- 로컬 마이닝 관리 도구는 `127.0.0.1:3100`에만 바인딩되는 최소 화면만 구현되어 있습니다. 추출 실행, 변경점 검수, 리뷰와 발행 UI는 아직 연결되지 않았습니다.
+- 추출기 패키지는 GBFRDataTools `2.0.0` 실행 전 점검, 후보 SQLite의 private staging import, 명시적 매핑 기반 normalization을 지원합니다.
+- 정규화 레코드는 항상 `staged` 상태로 저장됩니다. diff, review, publisher와 실제 공개 스냅샷 생성은 다음 구현 범위이며 자동 발행 경로는 없습니다.
+
 ## 요구 사항
 
 - Node.js 22 이상 (권장: Node.js 24 LTS)
@@ -52,6 +59,8 @@ pnpm --filter @relink-wiki/extractor normalize:mapped
 ```
 
 정규화 입력 계약, 출처 보존, 재실행 동작과 자동 한국어 조인의 현재 제한은 [`docs/normalization.md`](docs/normalization.md)를 참고하세요. 정규화된 레코드는 항상 `staged` 상태로 시작하며 자동 발행되지 않습니다.
+
+구현 상태와 public/private 경계는 [`docs/architecture.md`](docs/architecture.md), 전체 개발 기준선과 단계별 상태는 [`docs/development-baseline.md`](docs/development-baseline.md)를 참고하세요.
 
 ## 검증
 

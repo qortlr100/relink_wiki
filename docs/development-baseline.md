@@ -15,7 +15,7 @@ The mandatory contributor and agent rules live in the repository root `AGENTS.md
 | Data access          | Drizzle ORM                                 | Typed schema and migrations without hiding SQL behavior                          |
 | Boundary validation  | Zod                                         | Makes extraction and publication contracts explicit                              |
 | Unit tests           | Vitest                                      | Fast TypeScript-native tests                                                     |
-| Browser tests        | Playwright                                  | Verifies wiki navigation and critical admin flows                                |
+| Browser tests        | Playwright (planned)                        | Will verify wiki navigation and critical admin flows once the suite is added     |
 | Static analysis      | TypeScript, ESLint, Prettier                | Reproducible baseline across agents                                              |
 | Initial publication  | Versioned static JSON                       | Simple and auditable before a hosted database is justified                       |
 
@@ -33,15 +33,18 @@ The active SQLite database lives on the Windows PC. The application may use WSL 
 
 Commit a documented `.env.example`, but never commit real values.
 
-Expected local settings will include:
+The implemented extractor commands read these settings:
 
-- game installation directory;
-- GBFRDataTools executable path;
-- pinned GBFRDataTools version and the exceptional game-layout compatibility label used by the converter;
-- local working directory;
-- SQLite database path;
-- snapshot output directory;
-- log level.
+- `GBFR_DATA_TOOLS_PATH`: GBFRDataTools executable path used by preflight;
+- `GBFR_DATA_TOOLS_VERSION`: pinned extractor version, currently `2.0.0`;
+- `GBFR_GAME_VERSION`: exceptional compatibility label checked by preflight;
+- `GBFR_GAME_DATA_PATH`: game installation directory used by preflight;
+- `RELINK_RAW_OUTPUT_PATH`: private extraction output directory used by preflight;
+- `RELINK_CANDIDATE_DATABASE_PATH`: private GBFRDataTools candidate SQLite input;
+- `RELINK_DATABASE_PATH`: private Relink Wiki SQLite database;
+- `RELINK_NORMALIZATION_MAPPING_PATH`: private mapped-normalization JSON input.
+
+Snapshot output and log-level settings are not implemented. Add them to `.env.example` only when the publisher or structured logging code consumes and validates them.
 
 Configuration must be parsed once at startup and validated. Application code must consume the validated configuration object, not read environment variables throughout the codebase.
 
@@ -49,15 +52,17 @@ The currently validated extraction baseline pins GBFRDataTools `2.0.0` and requi
 
 ## Pipeline stages
 
-Each stage has a separate input/output contract:
+Each stage has a separate input/output contract. The current repository status is:
 
-1. **extract** — invokes the pinned external extractor in read-only mode;
-2. **import** — parses known output and stores private staging records;
-3. **normalize** — maps staging data into versioned domain records;
-4. **diff** — compares the candidate import with the accepted local version;
-5. **review** — records explicit user decisions;
-6. **publish** — generates allowlisted public DTOs and a manifest;
-7. **verify** — validates snapshot integrity and public build compatibility.
+| Stage         | Status      | Current contract                                                                                                  |
+| ------------- | ----------- | ----------------------------------------------------------------------------------------------------------------- |
+| **extract**   | Partial     | Preflight and a documented read-only GBFRDataTools workflow exist; the repository does not invoke extraction yet. |
+| **import**    | Implemented | Imports four allowlisted candidate tables into private staging records with provenance and idempotency.           |
+| **normalize** | Implemented | Maps explicitly selected staging rows into versioned `staged` normalized records.                                 |
+| **diff**      | Not started | Will compare a candidate normalization with the accepted local version.                                           |
+| **review**    | Not started | Will record explicit operator decisions in the local-only surface.                                                |
+| **publish**   | Not started | Will generate allowlisted public DTOs and a versioned manifest after preview.                                     |
+| **verify**    | Partial     | Domain and wiki loaders validate the prototype snapshot; generated-release verification is not built.             |
 
 Stages must be independently repeatable and must not infer success from file existence alone.
 
@@ -93,7 +98,7 @@ The project does not maintain a normal game-version history because it targets t
 
 ## Public wiki visual verification
 
-Browser verification for the public snapshot flow must cover the home page, category list, record detail, search, category filtering, and sorting. Check both the default desktop viewport and a 390 × 844 mobile viewport. Confirm that the mobile layout has no horizontal overflow, category cards collapse to one column, snapshot metadata remains readable, and record details collapse to one column. Review browser console warnings and errors during the same run.
+Browser verification for the public snapshot flow must cover the home page, category list, record detail, search, category filtering, and sorting. Check both the default desktop viewport and a 390 × 844 mobile viewport. Confirm that the mobile layout has no horizontal overflow, category cards collapse to one column, snapshot metadata remains readable, and record details collapse to one column. Review browser console warnings and errors during the same run. A Playwright dependency and checked-in browser test suite have not been added yet, so this remains a manual verification requirement.
 
 The snapshot loader integration was visually verified on 2026-07-14 with the prototype snapshot. The home page rendered all five records and snapshot metadata; searching for `그랑` returned the single expected record; the character list filter returned only `지타`; slug sorting produced `djeeta` before `gran`; and the `gran` detail route displayed its public identifier, slug, and published state. Desktop and mobile layouts showed no clipping or overlap, the 390-pixel viewport had no horizontal overflow, and the browser console reported no warnings or errors.
 
