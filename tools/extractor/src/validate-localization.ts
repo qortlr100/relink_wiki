@@ -231,6 +231,7 @@ export function validateLocalizationJoins(input: unknown): LocalizationValidatio
       categories,
       readyForAutomaticNormalization: Object.values(categories).every(
         (category) =>
+          category.sourceRowCount > 0 &&
           category.unresolvedRowCount === 0 &&
           category.ignoredRowCount === 0 &&
           category.nonCanonicalKeyRowCount === 0,

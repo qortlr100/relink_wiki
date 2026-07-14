@@ -171,6 +171,41 @@ describe("validateLocalizationJoins", () => {
     expect(result.readyForAutomaticNormalization).toBe(false);
   });
 
+  it("does not report automatic normalization readiness for an empty category", () => {
+    const config = createFixture({ resolveWeapon: true });
+    const sqlite = new Database(config.candidateDatabasePath);
+    sqlite.exec(`
+      DELETE FROM chara WHERE CharaName IS NULL;
+      DELETE FROM weapon WHERE Name = '';
+      DELETE FROM ability;
+    `);
+    sqlite.close();
+
+    const result = validateLocalizationJoins(config);
+
+    expect(result.categories.skill).toEqual({
+      sourceRowCount: 0,
+      eligibleRowCount: 0,
+      matchedRowCount: 0,
+      ignoredRowCount: 0,
+      nonCanonicalKeyRowCount: 0,
+      unresolvedRowCount: 0,
+      unresolvedKeyCount: 0,
+    });
+    expect(
+      Object.entries(result.categories)
+        .filter(([category]) => category !== "skill")
+        .every(
+          ([, category]) =>
+            category.sourceRowCount > 0 &&
+            category.unresolvedRowCount === 0 &&
+            category.ignoredRowCount === 0 &&
+            category.nonCanonicalKeyRowCount === 0,
+        ),
+    ).toBe(true);
+    expect(result.readyForAutomaticNormalization).toBe(false);
+  });
+
   it("normalizes surrounding whitespace for lookup but blocks non-canonical keys", () => {
     const config = createFixture({ resolveWeapon: true });
     const sqlite = new Database(config.candidateDatabasePath);

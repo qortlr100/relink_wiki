@@ -55,6 +55,8 @@ The two unresolved character rows share one context-dependent key whose base dis
 
 Empty or null keys are counted as ignored candidate rows. They are not silently converted into public records. An explicit policy for placeholder and internal rows is required before automatic localized normalization is introduced.
 
+Automatic normalization readiness also requires every category to contain at least one source row. An empty candidate table represents missing coverage rather than a successful zero-error validation.
+
 ## Failure contract
 
 - `LOCALIZATION_CANDIDATE_INVALID`: the candidate SQLite file cannot be opened read-only;
