@@ -37,12 +37,15 @@ Expected local settings will include:
 
 - game installation directory;
 - GBFRDataTools executable path;
+- pinned GBFRDataTools version and the exceptional game-layout compatibility label used by the converter;
 - local working directory;
 - SQLite database path;
 - snapshot output directory;
 - log level.
 
 Configuration must be parsed once at startup and validated. Application code must consume the validated configuration object, not read environment variables throughout the codebase.
+
+The currently validated extraction baseline pins GBFRDataTools `2.0.0` and requires the .NET 10 x64 runtime. Its reproducible sample workflow, archive coverage, candidate table results, release hash, and known `skill.tbl` incompatibility are recorded in [`extractor-validation.md`](extractor-validation.md).
 
 ## Pipeline stages
 
