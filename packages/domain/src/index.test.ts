@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { publicSnapshotSchema } from "./index";
+import { normalizedRecordSchema, publicSnapshotSchema } from "./index";
 describe("publicSnapshotSchema", () => {
   it("rejects unreviewed public records", () => {
     const result = publicSnapshotSchema.safeParse({
@@ -28,5 +28,25 @@ describe("publicSnapshotSchema", () => {
       skills: [],
     });
     expect(result.success).toBe(true);
+  });
+
+  it("validates a normalized record with complete private provenance", () => {
+    expect(
+      normalizedRecordSchema.safeParse({
+        category: "character",
+        id: "character-10",
+        slug: "gran",
+        nameKo: "그랑",
+        reviewState: "staged",
+        provenance: {
+          sourceFileId: "system/table/chara.tbl",
+          sourceRecordId: "1",
+          extractorVersion: "2.0.0",
+          importRunId: "7b6eb5c2-17bb-4c24-b4b0-701b080cd29b",
+          importedAt: "2026-07-15T00:00:00.000Z",
+          schemaVersion: 1,
+        },
+      }).success,
+    ).toBe(true);
   });
 });

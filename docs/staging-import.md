@@ -13,6 +13,8 @@ The staging importer is the first increment of roadmap stage 03. It accepts a pr
 
 The importer does not normalize records, infer Korean display names, publish snapshots, or read any table outside this allowlist. Unknown source columns remain only in the private `staging_records.payload_json` value.
 
+After an import succeeds, selected rows can be passed to the separate explicit mapping workflow documented in [`normalization.md`](normalization.md). Import and normalization remain independently repeatable stages.
+
 ## Database contract
 
 `packages/database/migrations/0000_initial.sql` creates the initial local schema:

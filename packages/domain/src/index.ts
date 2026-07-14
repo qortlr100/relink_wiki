@@ -1,11 +1,23 @@
 import { z } from "zod";
 export const reviewStateSchema = z.enum(["staged", "reviewed", "published"]);
+export const normalizedCategorySchema = z.enum(["character", "weapon", "sigil", "skill"]);
 export const provenanceSchema = z.object({
   sourceFileId: z.string().min(1),
   extractorVersion: z.string().min(1),
   importRunId: z.uuid(),
   importedAt: z.iso.datetime(),
   schemaVersion: z.int().positive(),
+});
+export const normalizedProvenanceSchema = provenanceSchema.extend({
+  sourceRecordId: z.string().min(1),
+});
+export const normalizedRecordSchema = z.object({
+  category: normalizedCategorySchema,
+  id: z.string().min(1),
+  slug: z.string().regex(/^[a-z0-9-]+$/),
+  nameKo: z.string().trim().min(1),
+  reviewState: reviewStateSchema,
+  provenance: normalizedProvenanceSchema,
 });
 export const characterSchema = z.object({
   id: z.string().min(1),
@@ -29,5 +41,6 @@ export const publicSnapshotSchema = z.object({
   skills: z.array(publicRecordSchema),
 });
 export type Character = z.infer<typeof characterSchema>;
+export type NormalizedRecord = z.infer<typeof normalizedRecordSchema>;
 export type PublicRecord = z.infer<typeof publicRecordSchema>;
 export type PublicSnapshot = z.infer<typeof publicSnapshotSchema>;

@@ -59,6 +59,65 @@ export const importWarnings = sqliteTable(
   ],
 );
 
+export const normalizationRuns = sqliteTable(
+  "normalization_runs",
+  {
+    id: text("id").primaryKey(),
+    inputFingerprint: text("input_fingerprint").notNull(),
+    importRunId: text("import_run_id")
+      .notNull()
+      .references(() => importRuns.id),
+    normalizedAt: text("normalized_at").notNull(),
+    schemaVersion: integer("schema_version").notNull(),
+  },
+  (table) => [
+    uniqueIndex("normalization_runs_input_fingerprint_unique").on(table.inputFingerprint),
+  ],
+);
+
+export const normalizedRecords = sqliteTable(
+  "normalized_records",
+  {
+    normalizationRunId: text("normalization_run_id")
+      .notNull()
+      .references(() => normalizationRuns.id, { onDelete: "cascade" }),
+    category: text("category", {
+      enum: ["character", "weapon", "sigil", "skill"],
+    }).notNull(),
+    id: text("id").notNull(),
+    slug: text("slug").notNull(),
+    nameKo: text("name_ko").notNull(),
+    reviewState: text("review_state", { enum: ["staged", "reviewed", "published"] }).notNull(),
+    sourceTable: text("source_table", {
+      enum: ["chara", "weapon", "gem", "ability"],
+    }).notNull(),
+    sourceFileId: text("source_file_id").notNull(),
+    sourceRecordId: text("source_record_id").notNull(),
+    extractorVersion: text("extractor_version").notNull(),
+    importRunId: text("import_run_id")
+      .notNull()
+      .references(() => importRuns.id),
+    importedAt: text("imported_at").notNull(),
+    schemaVersion: integer("schema_version").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.normalizationRunId, table.category, table.sourceRecordId],
+    }),
+    uniqueIndex("normalized_records_id_unique").on(
+      table.normalizationRunId,
+      table.category,
+      table.id,
+    ),
+    uniqueIndex("normalized_records_slug_unique").on(
+      table.normalizationRunId,
+      table.category,
+      table.slug,
+    ),
+    index("normalized_records_import_run_index").on(table.importRunId),
+  ],
+);
+
 export const characters = sqliteTable(
   "characters",
   {

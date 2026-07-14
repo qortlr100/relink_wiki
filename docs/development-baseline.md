@@ -63,6 +63,8 @@ Stages must be independently repeatable and must not infer success from file exi
 
 The first import increment reads only the allowlisted `chara`, `weapon`, `gem`, and `ability` tables from a GBFRDataTools candidate SQLite database. It stores every accepted source row as a private staging JSON payload, joined to an import run that records the extractor version, import timestamp, and staging schema version. A content fingerprint makes exact reruns reuse the original atomic import instead of duplicating runs or rows. The known `skill.tbl` incompatibility is retained as an `SKILL_TABLE_INCOMPATIBLE` warning. See [`staging-import.md`](staging-import.md) for the executable contract and current limits.
 
+The first normalization increment accepts a private, explicitly curated mapping file for selected staging rows. It derives category and provenance from the selected import, validates the Korean display name and public identifiers, and writes only `staged` normalized records. The mapping and source payload hashes form an idempotency fingerprint, so identical reruns reuse the original normalization run. It does not infer localization joins or publish data. See [`normalization.md`](normalization.md).
+
 ## Public snapshot contract
 
 The current version 1 prototype snapshot is validated by `publicSnapshotSchema` in `packages/domain`. It contains the four allowlisted collections `characters`, `weapons`, `sigils`, and `skills` together with `schemaVersion`, `contentRevision`, `generatedAt`, and `sourceRevision`. Prototype records expose only their public identifier, slug, Korean display name, and the literal `published` review state.

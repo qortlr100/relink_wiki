@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export * from "./migration";
+export * from "./normalization-repository";
 export * from "./schema";
 export * from "./staging-import-repository";
 

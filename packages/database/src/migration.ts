@@ -8,6 +8,10 @@ const migrations = [
     id: "0000_initial",
     path: fileURLToPath(new URL("../migrations/0000_initial.sql", import.meta.url)),
   },
+  {
+    id: "0001_normalized_records",
+    path: fileURLToPath(new URL("../migrations/0001_normalized_records.sql", import.meta.url)),
+  },
 ] as const;
 
 export class DatabaseMigrationError extends Error {

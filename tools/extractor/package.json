@@ -8,6 +8,7 @@
   "scripts": {
     "build": "tsc --noEmit",
     "import:candidate": "tsx src/cli.ts import-candidate",
+    "normalize:mapped": "tsx src/cli.ts normalize-mapped",
     "preflight": "tsx src/cli.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

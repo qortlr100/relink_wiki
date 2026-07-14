@@ -2,6 +2,7 @@
 import { readExtractorConfig } from "./config";
 import { importCandidateDatabase, readCandidateImportConfig } from "./import-candidate";
 import { classifyCliFailure, readCliConfig } from "./cli-errors";
+import { normalizeMappedDatabase, readMappedNormalizationConfig } from "./normalize-mapped";
 import { inspectExtractorEnvironment } from "./preflight";
 
 try {
@@ -17,6 +18,19 @@ try {
         message: result.reused
           ? "동일한 후보 데이터를 이미 가져와 기존 실행을 재사용했습니다."
           : "후보 데이터를 비공개 스테이징으로 가져왔습니다.",
+        ...result,
+      }),
+    );
+  } else if (command === "normalize-mapped") {
+    const result = normalizeMappedDatabase(
+      readCliConfig(() => readMappedNormalizationConfig(process.env)),
+    );
+    console.log(
+      JSON.stringify({
+        code: result.reused ? "NORMALIZATION_REUSED" : "NORMALIZATION_COMPLETED",
+        message: result.reused
+          ? "동일한 정규화 입력을 이미 처리해 기존 실행을 재사용했습니다."
+          : "명시적 매핑을 비공개 정규화 레코드로 저장했습니다.",
         ...result,
       }),
     );
