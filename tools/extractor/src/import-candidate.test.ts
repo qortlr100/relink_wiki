@@ -124,4 +124,26 @@ describe("importCandidateDatabase", () => {
       expect(String(error)).not.toContain("no such column");
     }
   });
+
+  it("preserves unsafe 64-bit integers as exact decimal strings", () => {
+    const config = createFixture();
+    const source = new Database(config.candidateDatabasePath);
+    source.exec(`
+      ALTER TABLE ability ADD COLUMN LargeInteger INTEGER;
+      UPDATE ability SET LargeInteger = 9223372036854775807;
+    `);
+    source.close();
+
+    importCandidateDatabase(config);
+    const target = new Database(config.targetDatabasePath, { readonly: true });
+    const stored = target
+      .prepare("SELECT payload_json FROM staging_records WHERE source_table = 'ability'")
+      .get() as { payload_json: string };
+    target.close();
+
+    expect(JSON.parse(stored.payload_json)).toMatchObject({
+      AbilityId: 40,
+      LargeInteger: "9223372036854775807",
+    });
+  });
 });

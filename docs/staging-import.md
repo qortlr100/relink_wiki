@@ -18,7 +18,7 @@ The importer does not normalize records, infer Korean display names, publish sna
 `packages/database/migrations/0000_initial.sql` creates the initial local schema:
 
 - `import_runs` stores the import ID, SHA-256 input fingerprint, extractor version, import timestamp, and staging schema version;
-- `staging_records` stores the source table, source file identifier, source row identifier, private JSON payload, and payload hash;
+- `staging_records` stores the source table, source file identifier, source row identifier, private JSON payload, and payload hash. SQLite integers outside JavaScript's safe integer range are preserved as exact decimal strings in the private payload;
 - `import_warnings` stores stable warning codes separately from source rows;
 - normalized `characters` remains isolated from private staging data.
 
@@ -46,7 +46,7 @@ pnpm --filter @relink-wiki/extractor import:candidate
 
 The command opens the candidate database in read-only/query-only mode, applies pending target migrations, and performs the staging import in one database transaction. Its JSON result contains only stable codes, counts, the import run ID, and whether an existing run was reused. It never prints either private database path.
 
-The candidate and target settings must resolve to different files. The importer rejects matching normalized paths, symbolic-link targets, and existing hard links before it opens the writable target. Concurrent imports wait briefly for the SQLite write lock, and the unique input fingerprint is claimed with an atomic conflict-safe insert.
+The candidate and target settings must resolve to different files. At startup, the importer checks normalized paths, symbolic-link targets, and existing hard links before it opens the writable target. Because filesystem links can be replaced concurrently, run the local importer from a controlled private directory where other processes do not replace these paths during execution. Concurrent imports wait briefly for the SQLite write lock, and the unique input fingerprint is claimed with an atomic conflict-safe insert.
 
 ## Failure contract
 
@@ -56,5 +56,7 @@ The candidate and target settings must resolve to different files. The importer 
 - `CANDIDATE_TABLE_INVALID`: an allowlisted table does not support the expected row-based read contract;
 - `CANDIDATE_ROW_INVALID`: a row contains a value that cannot be represented by the private scalar JSON contract;
 - `DATABASE_MIGRATION_CHANGED`: an already-applied migration file no longer matches its stored checksum.
+- `DATABASE_BUSY`: another local process kept the target database locked past the wait timeout;
+- `EXTRACTOR_UNEXPECTED_ERROR`: a failure occurred outside the documented configuration, candidate, migration, or lock contracts.
 
 Configuration validation failures use `EXTRACTOR_CONFIG_INVALID`. None of these errors includes a local path or source payload.

@@ -1,18 +1,16 @@
 #!/usr/bin/env node
 import { readExtractorConfig } from "./config";
-import { DatabaseMigrationError } from "@relink-wiki/database";
-import {
-  CandidateImportError,
-  importCandidateDatabase,
-  readCandidateImportConfig,
-} from "./import-candidate";
+import { importCandidateDatabase, readCandidateImportConfig } from "./import-candidate";
+import { classifyCliFailure, readCliConfig } from "./cli-errors";
 import { inspectExtractorEnvironment } from "./preflight";
 
 try {
   const command = process.argv[2] ?? "preflight";
 
   if (command === "import-candidate") {
-    const result = importCandidateDatabase(readCandidateImportConfig(process.env));
+    const result = importCandidateDatabase(
+      readCliConfig(() => readCandidateImportConfig(process.env)),
+    );
     console.log(
       JSON.stringify({
         code: result.reused ? "CANDIDATE_IMPORT_REUSED" : "CANDIDATE_IMPORT_COMPLETED",
@@ -28,7 +26,7 @@ try {
     );
     process.exitCode = 1;
   } else {
-    const config = readExtractorConfig(process.env);
+    const config = readCliConfig(() => readExtractorConfig(process.env));
     const preflight = inspectExtractorEnvironment(config);
 
     if (!preflight.ok) {
@@ -52,19 +50,6 @@ try {
     }
   }
 } catch (error) {
-  if (error instanceof CandidateImportError) {
-    console.error(JSON.stringify({ code: error.code, message: error.message }));
-    process.exitCode = 1;
-  } else if (error instanceof DatabaseMigrationError) {
-    console.error(JSON.stringify({ code: error.code, message: error.message }));
-    process.exitCode = 1;
-  } else {
-    console.error(
-      JSON.stringify({
-        code: "EXTRACTOR_CONFIG_INVALID",
-        message: "추출기 환경 변수를 확인하세요.",
-      }),
-    );
-    process.exitCode = 1;
-  }
+  console.error(JSON.stringify(classifyCliFailure(error)));
+  process.exitCode = 1;
 }

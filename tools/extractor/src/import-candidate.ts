@@ -31,7 +31,10 @@ const candidateTables = [
   { sourceTable: "ability", sourceFileId: "system/table/ability.tbl" },
 ] as const;
 
-const sourceRowSchema = z.record(z.string(), z.union([z.string(), z.number(), z.null()]));
+const sourceRowSchema = z.record(
+  z.string(),
+  z.union([z.string(), z.number(), z.bigint(), z.null()]),
+);
 
 export type CandidateImportErrorCode =
   | "CANDIDATE_DATABASE_INVALID"
@@ -96,9 +99,22 @@ function pathsReferToSameFile(candidatePath: string, targetPath: string): boolea
   }
 }
 
-function sortPayload(payload: Record<string, string | number | null>) {
+function normalizeSourcePayload(payload: Record<string, string | number | bigint | null>) {
   return Object.fromEntries(
-    Object.entries(payload).sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0)),
+    Object.entries(payload)
+      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+      .map(([fieldName, fieldValue]) => {
+        if (typeof fieldValue !== "bigint") {
+          return [fieldName, fieldValue];
+        }
+
+        const normalizedValue =
+          fieldValue >= BigInt(Number.MIN_SAFE_INTEGER) &&
+          fieldValue <= BigInt(Number.MAX_SAFE_INTEGER)
+            ? Number(fieldValue)
+            : fieldValue.toString();
+        return [fieldName, normalizedValue];
+      }),
   );
 }
 
@@ -145,14 +161,14 @@ function readStagingRecords(sqlite: Database.Database): StagingImport["records"]
       }
 
       const { __relink_source_rowid: sourceRowId, ...sourcePayload } = parsedRow.data;
-      if (typeof sourceRowId !== "number") {
+      if (typeof sourceRowId !== "number" && typeof sourceRowId !== "bigint") {
         throw new CandidateImportError(
           "CANDIDATE_ROW_INVALID",
           `후보 테이블 ${candidateTable.sourceTable}의 행 식별자를 읽을 수 없습니다.`,
         );
       }
 
-      const rawPayload = privateSourcePayloadSchema.parse(sortPayload(sourcePayload));
+      const rawPayload = privateSourcePayloadSchema.parse(normalizeSourcePayload(sourcePayload));
       const serializedPayload = JSON.stringify(rawPayload);
 
       return {
@@ -169,6 +185,7 @@ function readStagingRecords(sqlite: Database.Database): StagingImport["records"]
 function openCandidateDatabase(path: string): Database.Database {
   try {
     const sqlite = new Database(path, { fileMustExist: true, readonly: true });
+    sqlite.defaultSafeIntegers(true);
     sqlite.pragma("query_only = ON");
     return sqlite;
   } catch {
