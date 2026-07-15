@@ -34,4 +34,4 @@ This API can be tested with temporary directories on any supported development p
 
 ## Current integration boundary
 
-The mining admin does not call these APIs yet. A later publication transaction must show the preview or its diff, invoke the candidate writer, record publication history, change the accepted records to `published` only after the file commit, and then offer deployment. The repository's sample snapshot remains UI fixture data rather than a generated release.
+The mining admin does not call these APIs yet. After the writer commits and verifies a candidate, the separate database finalizer records immutable publication history and changes the accepted records to `published` in one transaction. The caller must retain the publication UUID, snapshot and writer receipt so an exact finalization request can be retried if the response is lost. A written but unfinalized candidate is not deployed. See [`publication-history.md`](publication-history.md). The repository's sample snapshot remains UI fixture data rather than a generated release, and Sites deployment is still later work.

@@ -153,6 +153,46 @@ export const acceptedNormalizationBaselines = sqliteTable("accepted_normalizatio
   backupSha256: text("backup_sha256").notNull(),
 });
 
+export const publicSnapshotPublications = sqliteTable(
+  "public_snapshot_publications",
+  {
+    id: text("id").primaryKey(),
+    normalizationRunId: text("normalization_run_id")
+      .notNull()
+      .references(() => normalizationRuns.id),
+    schemaVersion: integer("schema_version").notNull(),
+    publishedAt: text("published_at").notNull(),
+    snapshotGeneratedAt: text("snapshot_generated_at").notNull(),
+    contentRevision: text("content_revision").notNull(),
+    sourceRevision: text("source_revision").notNull(),
+    outputSha256: text("output_sha256").notNull(),
+    recordCount: integer("record_count").notNull(),
+    previousContentRevision: text("previous_content_revision"),
+    backupReference: text("backup_reference").notNull(),
+    backupCreatedAt: text("backup_created_at").notNull(),
+    backupSha256: text("backup_sha256").notNull(),
+  },
+  (table) => [
+    index("public_snapshot_publications_schema_version_index").on(
+      table.schemaVersion,
+      table.publishedAt,
+    ),
+  ],
+);
+
+export const currentPublicSnapshotPublications = sqliteTable(
+  "current_public_snapshot_publications",
+  {
+    schemaVersion: integer("schema_version").primaryKey(),
+    publicationId: text("publication_id")
+      .notNull()
+      .unique()
+      .references(() => publicSnapshotPublications.id),
+    contentRevision: text("content_revision").notNull(),
+    publishedAt: text("published_at").notNull(),
+  },
+);
+
 export const characters = sqliteTable(
   "characters",
   {
