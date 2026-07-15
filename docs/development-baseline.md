@@ -42,7 +42,7 @@ The implemented extractor commands read these settings:
 - `RELINK_RAW_OUTPUT_PATH`: private extraction output directory used by preflight;
 - `RELINK_CANDIDATE_DATABASE_PATH`: private GBFRDataTools candidate SQLite input;
 - `RELINK_DATABASE_PATH`: private Relink Wiki SQLite database;
-- `RELINK_NORMALIZATION_MAPPING_PATH`: private mapped-normalization JSON input.
+- `RELINK_NORMALIZATION_MAPPING_PATH`: private mapping-candidate output and reviewed mapped-normalization JSON input;
 - `RELINK_KOREAN_MESSAGE_DIRECTORY_PATH`: private directory containing the extracted Korean `text.msg` and `text_chara.msg` files used by the read-only localization join validator.
 
 Snapshot output and log-level settings are not implemented. Add them to `.env.example` only when the publisher or structured logging code consumes and validates them.
@@ -59,7 +59,7 @@ Each stage has a separate input/output contract. The current repository status i
 | ------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **extract**   | Partial     | Preflight and a documented read-only GBFRDataTools workflow exist; the repository does not invoke extraction yet.                                                                    |
 | **import**    | Implemented | Imports four allowlisted candidate tables into private staging records with provenance and idempotency.                                                                              |
-| **normalize** | Implemented | Maps explicitly selected staging rows into versioned `staged` normalized records; Korean display-name joins are reproducibly validated but not applied automatically.                |
+| **normalize** | Implemented | Generates a private review candidate from canonical resolved localization joins, then maps only the explicitly reviewed JSON into versioned `staged` records.                        |
 | **diff**      | Implemented | A read-only engine compares two compatible private normalization runs with deterministic, allowlisted results.                                                                       |
 | **review**    | Partial     | Explicit run acceptance persists backup evidence, immutable history and one baseline per schema version; rejection, per-record review and admin integration remain.                  |
 | **publish**   | Partial     | Generates and atomically writes a deterministic allowlisted candidate, then records immutable publication history and the DB `published` transition; admin UI and deployment remain. |
@@ -69,7 +69,9 @@ Stages must be independently repeatable and must not infer success from file exi
 
 The first import increment reads only the allowlisted `chara`, `weapon`, `gem`, and `ability` tables from a GBFRDataTools candidate SQLite database. It stores every accepted source row as a private staging JSON payload, joined to an import run that records the extractor version, import timestamp, and staging schema version. A content fingerprint makes exact reruns reuse the original atomic import instead of duplicating runs or rows. The known `skill.tbl` incompatibility is retained as an `SKILL_TABLE_INCOMPATIBLE` warning. See [`staging-import.md`](staging-import.md) for the executable contract and current limits.
 
-The first normalization increment accepts a private, explicitly curated mapping file for selected staging rows. It derives category and provenance from the selected import, validates the Korean display name and public identifiers, and writes only `staged` normalized records. The mapping and source payload hashes form an idempotency fingerprint, so identical reruns reuse the original normalization run. It does not infer localization joins or publish data. See [`normalization.md`](normalization.md).
+The mapping-candidate command idempotently imports the current candidate database, resolves only canonical non-empty Korean display-name joins, derives stable public identifiers from `chara.CharId` and the `Key` columns of `weapon`, `gem`, and `ability`, and writes a new private JSON file without overwriting an existing operator copy. Empty, non-canonical, and unresolved message keys remain excluded and are reported only as counts. The output is an unreviewed draft and does not normalize or publish data. See [`mapping-candidate.md`](mapping-candidate.md).
+
+The mapped normalization increment accepts the private, explicitly reviewed mapping file for selected staging rows. It derives category and provenance from the selected import, validates the Korean display name and public identifiers, and writes only `staged` normalized records. The mapping and source payload hashes form an idempotency fingerprint, so identical reruns reuse the original normalization run. See [`normalization.md`](normalization.md).
 
 The read-only localization validator establishes the current `chara.CharaName`, `weapon.Name`, `gem.Name`, and `ability.Unk5` joins against the extracted Korean message catalogs. It reports only coverage counts and keeps unresolved or empty-key rows out of automatic normalization. See [`localization-validation.md`](localization-validation.md).
 

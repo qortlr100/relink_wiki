@@ -2,6 +2,7 @@
 import { readExtractorConfig } from "./config";
 import { importCandidateDatabase, readCandidateImportConfig } from "./import-candidate";
 import { classifyCliFailure, readCliConfig } from "./cli-errors";
+import { generateMappingCandidate, readMappingCandidateConfig } from "./generate-mapping-candidate";
 import { normalizeMappedDatabase, readMappedNormalizationConfig } from "./normalize-mapped";
 import { inspectExtractorEnvironment } from "./preflight";
 import {
@@ -12,7 +13,18 @@ import {
 try {
   const command = process.argv[2] ?? "preflight";
 
-  if (command === "import-candidate") {
+  if (command === "generate-mapping-candidate") {
+    const result = generateMappingCandidate(
+      readCliConfig(() => readMappingCandidateConfig(process.env)),
+    );
+    console.log(
+      JSON.stringify({
+        code: "MAPPING_CANDIDATE_GENERATED",
+        message: "검수용 비공개 정규화 mapping 후보를 생성했습니다.",
+        ...result,
+      }),
+    );
+  } else if (command === "import-candidate") {
     const result = importCandidateDatabase(
       readCliConfig(() => readCandidateImportConfig(process.env)),
     );

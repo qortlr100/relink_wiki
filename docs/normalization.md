@@ -11,7 +11,7 @@ The first normalization increment converts explicitly selected private staging r
 | `gem`        | `sigil`             |
 | `ability`    | `skill`             |
 
-This workflow does not infer Korean names from structural fields. The current message paths and four display-name joins are reproducibly validated in [`localization-validation.md`](localization-validation.md), but placeholder rows and one unresolved weapon key still require an explicit policy. Until automatic localized normalization is separately implemented and reviewed, Korean display names must be supplied by an explicit local mapping and remain private and unreviewed.
+This workflow does not infer Korean names while writing normalized records. The current message paths and four display-name joins are reproducibly validated in [`localization-validation.md`](localization-validation.md). A separate command can create a private review candidate from canonical resolved joins, but placeholder rows and unresolved keys remain excluded and the generated file must be explicitly reviewed before this normalization command is run. See [`mapping-candidate.md`](mapping-candidate.md).
 
 ## Database contract
 

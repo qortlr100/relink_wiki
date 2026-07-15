@@ -6,7 +6,7 @@ Granblue Fantasy: Relink 데이터를 로컬에서 추출·검수하고, 승인�
 
 - 공개 위키는 검증된 버전 1 정적 JSON 스냅샷에서 캐릭터, 무기, 진, 스킬의 검색·목록·상세 화면을 제공합니다. 저장소에 포함된 스냅샷은 UI 검증용 샘플이며 실제 게임 데이터 발행본이 아닙니다.
 - 로컬 마이닝 관리 도구는 `127.0.0.1:3100`에만 바인딩되는 최소 화면만 구현되어 있습니다. 추출 실행, 변경점 검수, 리뷰와 발행 UI는 아직 연결되지 않았습니다.
-- 추출기 패키지는 GBFRDataTools `2.0.0` 실행 전 점검, 후보 SQLite의 private staging import, 명시적 매핑 기반 normalization, 한국어 메시지 조인 범위 검증을 지원합니다.
+- 추출기 패키지는 GBFRDataTools `2.0.0` 실행 전 점검, 후보 SQLite의 private staging import, 한국어 메시지 조인 검증, 검수용 mapping 후보 생성과 명시적 매핑 기반 normalization을 지원합니다.
 - 데이터베이스 패키지는 두 private normalization 실행의 공개 후보 필드를 읽기 전용으로 비교하고, NAS 백업 증빙과 baseline 동시성 확인을 거친 명시적 승인을 영속화합니다. publisher 패키지는 승인된 baseline에서 allowlist 공개 DTO와 검증 가능한 manifest 미리보기를 만들고, 별도의 명시적 호출에서 백업·현재 리비전 gate를 거쳐 version 1 JSON 파일을 원자적으로 교체·재검증합니다. 검증된 쓰기 결과는 immutable publication 이력과 현재 포인터로 기록되며 해당 baseline은 한 SQLite transaction에서 `published`로 전환됩니다. 관리 UI, 거절 검수, 배포와 이전 공개본 복구는 다음 구현 범위입니다.
 
 ## 요구 사항
@@ -52,14 +52,6 @@ pnpm --filter @relink-wiki/extractor import:candidate
 
 임포트 계약, 재실행 동작과 현재 범위는 [`docs/staging-import.md`](docs/staging-import.md)를 참고하세요. 이 명령은 공개 스냅샷을 만들거나 발행하지 않습니다.
 
-비공개 staging 레코드 중 확인된 항목을 정규화하려면 로컬 전용 매핑 JSON을 준비하고 실행합니다.
-
-```bash
-pnpm --filter @relink-wiki/extractor normalize:mapped
-```
-
-정규화 입력 계약, 출처 보존, 재실행 동작과 자동 한국어 조인의 현재 제한은 [`docs/normalization.md`](docs/normalization.md)를 참고하세요. 정규화된 레코드는 항상 `staged` 상태로 시작하며 자동 발행되지 않습니다.
-
 추출한 한국어 메시지와 네 후보 테이블의 표시명 조인 범위를 원문 노출 없이 검증하려면 다음 명령을 실행합니다.
 
 ```bash
@@ -67,6 +59,22 @@ pnpm --filter @relink-wiki/extractor localization:validate
 ```
 
 필요한 비공개 메시지 경로, 확인된 조인 열, 현재 미해결 범위는 [`docs/localization-validation.md`](docs/localization-validation.md)를 참고하세요. 이 명령은 정규화 레코드를 쓰거나 발행하지 않습니다.
+
+현재 import와 검증된 한국어 조인에서 로컬 검수용 mapping 후보를 처음 생성하려면 실행합니다.
+
+```bash
+pnpm --filter @relink-wiki/extractor mapping:candidate
+```
+
+후보 생성은 현재 candidate import를 멱등 확인하고, 빈 키·미해결 키·비정규 키를 제외하며 기존 파일을 덮어쓰지 않습니다. 출력은 검수 전 비공개 초안입니다. 식별자 규칙과 검수 절차는 [`docs/mapping-candidate.md`](docs/mapping-candidate.md)를 참고하세요.
+
+검수한 로컬 전용 매핑 JSON으로 비공개 staging 레코드를 정규화하려면 실행합니다.
+
+```bash
+pnpm --filter @relink-wiki/extractor normalize:mapped
+```
+
+정규화 입력 계약, 출처 보존과 재실행 동작은 [`docs/normalization.md`](docs/normalization.md)를 참고하세요. 정규화된 레코드는 항상 `staged` 상태로 시작하며 자동 발행되지 않습니다.
 
 두 private normalization 실행 간 `added`, `changed`, `removed`, `unchanged` 비교 계약은 [`docs/normalization-diff.md`](docs/normalization-diff.md)를 참고하세요. 현재 비교 엔진은 데이터베이스 패키지의 읽기 전용 API이며 관리 화면에는 아직 연결되지 않았습니다.
 

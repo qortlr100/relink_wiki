@@ -15,8 +15,7 @@ This document describes the architecture that exists in the repository today. Fu
 
 1. The operator uses the pinned external GBFRDataTools release to read the locally installed game archives into a private output location.
 2. The extractor CLI imports four allowlisted candidate SQLite tables into private staging records.
-3. An explicit private mapping converts selected staging rows into versioned `staged` normalized records.
-   A separate read-only validator can measure Korean message join coverage without writing localized text or normalized records.
+3. A read-only validator measures Korean message join coverage. A separate local command can create a non-overwriting private mapping candidate from canonical resolved joins, and only an explicitly reviewed mapping converts selected staging rows into versioned `staged` normalized records.
 4. The database package can compare two compatible private normalization runs without writing state, then atomically persist an explicitly accepted baseline after validated NAS backup evidence and an optimistic baseline check. **Not implemented:** the local admin exposes this workflow or records rejection and per-record decisions.
 5. The publisher can generate a deterministic, allowlisted public snapshot preview from the accepted baseline and explicitly write it as an atomically replaced, re-verified version 1 JSON candidate after backup and current-revision checks. A separate SQLite transaction verifies that writer receipt against the still-current baseline, records immutable publication history, advances the current-publication pointer and changes the complete baseline to `published`. **Not implemented:** mining-admin publication controls, Sites deployment and rollback.
 6. The public wiki reads only the validated static snapshot bundled with its build. The current file is prototype sample data and is not generated from the local database.

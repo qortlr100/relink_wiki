@@ -7,6 +7,7 @@
   },
   "scripts": {
     "build": "tsc --noEmit",
+    "mapping:candidate": "tsx src/cli.ts generate-mapping-candidate",
     "import:candidate": "tsx src/cli.ts import-candidate",
     "localization:validate": "tsx src/cli.ts validate-localization",
     "normalize:mapped": "tsx src/cli.ts normalize-mapped",
