@@ -17,7 +17,7 @@ This document describes the architecture that exists in the repository today. Fu
 2. The extractor CLI imports four allowlisted candidate SQLite tables into private staging records.
 3. An explicit private mapping converts selected staging rows into versioned `staged` normalized records.
    A separate read-only validator can measure Korean message join coverage without writing localized text or normalized records.
-4. The database package can compare two compatible private normalization runs without writing state. **Not implemented:** the local admin selects an accepted baseline and records explicit review decisions.
+4. The database package can compare two compatible private normalization runs without writing state, then atomically persist an explicitly accepted baseline after validated NAS backup evidence and an optimistic baseline check. **Not implemented:** the local admin exposes this workflow or records rejection and per-record decisions.
 5. **Not implemented:** a publisher generates a reviewed, allowlisted public snapshot with a preview or diff.
 6. The public wiki reads only the validated static snapshot bundled with its build. The current file is prototype sample data and is not generated from the local database.
 
@@ -37,7 +37,7 @@ Quests, enemies, items, and other categories are future scope and require an exp
 
 ### Local mining admin
 
-The admin application binds to `127.0.0.1:3100` in its development command and currently renders only a local-only status placeholder. The database package now exposes a read-only normalization-run diff contract, but extractor runs, import errors, record differences, review decisions, asset status, and publication controls are not connected to the app yet. When implemented, publishing must remain an explicit operation with a preview or diff.
+The admin application binds to `127.0.0.1:3100` in its development command and currently renders only a local-only status placeholder. The database package exposes read-only normalization diff and explicit acceptance contracts, but extractor runs, import errors, record differences, review actions, asset status, and publication controls are not connected to the app yet. When implemented, publishing must remain an explicit operation with a preview or diff.
 
 ## Publication strategy
 
@@ -47,6 +47,6 @@ The version 1 public prototype snapshot exposes four allowlisted collections: `c
 
 The prototype wiki routes each allowlisted collection through `/archive/[category]` and each record through `/archive/[category]/[slug]`. Unknown categories and missing public records render an explicit recovery message. These routes consume only the validated public snapshot and never query local staging or admin storage.
 
-The private `normalized_records` table is not a public DTO source yet. It contains staged records and provenance, while review state transitions and publisher generation remain unimplemented. The future publisher must construct public records from an allowlist rather than serialize private database rows directly.
+The private `normalized_records` table is not a public DTO source yet. New records are staged; explicit run acceptance changes only the accepted run's records to `reviewed`. Publisher generation remains unimplemented, and the future publisher must construct public records from an allowlist rather than serialize private database rows directly.
 
-The read-only diff engine pairs records by normalized category and source record ID, then compares only `id`, `slug`, and `nameKo`. It refuses cross-schema comparisons and does not persist an accepted baseline or review decision. See [`normalization-diff.md`](normalization-diff.md).
+The read-only diff engine pairs records by normalized category and source record ID, then compares only `id`, `slug`, and `nameKo`. It refuses cross-schema comparisons. The separate acceptance repository records immutable acceptance history, requires path-free NAS backup evidence, and advances one current baseline per schema version only when the caller's expected baseline still matches. See [`normalization-diff.md`](normalization-diff.md) and [`normalization-review.md`](normalization-review.md).

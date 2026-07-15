@@ -118,6 +118,41 @@ export const normalizedRecords = sqliteTable(
   ],
 );
 
+export const normalizationAcceptances = sqliteTable(
+  "normalization_acceptances",
+  {
+    normalizationRunId: text("normalization_run_id")
+      .primaryKey()
+      .references(() => normalizationRuns.id),
+    schemaVersion: integer("schema_version").notNull(),
+    acceptedAt: text("accepted_at").notNull(),
+    previousBaselineNormalizationRunId: text("previous_baseline_normalization_run_id").references(
+      () => normalizationRuns.id,
+    ),
+    backupReference: text("backup_reference").notNull(),
+    backupCreatedAt: text("backup_created_at").notNull(),
+    backupSha256: text("backup_sha256").notNull(),
+  },
+  (table) => [
+    index("normalization_acceptances_schema_version_index").on(
+      table.schemaVersion,
+      table.acceptedAt,
+    ),
+  ],
+);
+
+export const acceptedNormalizationBaselines = sqliteTable("accepted_normalization_baselines", {
+  schemaVersion: integer("schema_version").primaryKey(),
+  normalizationRunId: text("normalization_run_id")
+    .notNull()
+    .unique()
+    .references(() => normalizationRuns.id),
+  acceptedAt: text("accepted_at").notNull(),
+  backupReference: text("backup_reference").notNull(),
+  backupCreatedAt: text("backup_created_at").notNull(),
+  backupSha256: text("backup_sha256").notNull(),
+});
+
 export const characters = sqliteTable(
   "characters",
   {

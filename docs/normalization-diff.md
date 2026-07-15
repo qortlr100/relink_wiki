@@ -2,7 +2,7 @@
 
 ## Scope
 
-The database package provides a read-only comparison between two private normalization runs. This is the first implementation increment for the local review workflow. It does not select an accepted baseline, change review state, write comparison results, generate a public snapshot, or publish data.
+The database package provides a read-only comparison between two private normalization runs. It does not change review state, write comparison results, generate a public snapshot, or publish data. Baseline selection and review-state persistence are deliberately handled by the separate explicit acceptance contract.
 
 Call `compareNormalizationRuns` with a baseline normalization run ID and a candidate normalization run ID. Both inputs are validated UUIDs, and both runs must exist in the same local Relink Wiki database.
 
@@ -25,7 +25,7 @@ Results are sorted by category and source record ID, include changed-field names
 
 Normalization runs with different schema versions are not compared. A future migration or explicit compatibility adapter must define how their meanings relate before cross-version comparison is allowed.
 
-This API can compare any two compatible private runs, but it does not claim that the baseline has been reviewed or accepted. Baseline selection and persistence belong to the later review-state implementation.
+This API can compare any two compatible private runs, but the supplied baseline ID alone does not prove acceptance. Callers should read the current baseline through the acceptance repository, compare against it, then pass the same observed ID to `acceptNormalizationRun`. See [`normalization-review.md`](normalization-review.md).
 
 ## Failure contract
 
@@ -37,4 +37,4 @@ Errors do not include requested run IDs, private paths, Korean display names, so
 
 ## Current integration boundary
 
-The local mining admin is not connected to the comparison API yet. Its future comparison screen may consume this contract, but must remain bound to `127.0.0.1`, must not expose private values through the public wiki, and must record review decisions separately from read-only diff calculation.
+The local mining admin is not connected to the comparison or acceptance APIs yet. Its future comparison screen may consume these contracts, but must remain bound to `127.0.0.1`, must not expose private values through the public wiki, and must keep explicit review decisions separate from read-only diff calculation.

@@ -124,6 +124,47 @@ export const normalizationDiffSchema = z
       }
     }
   });
+export const backupReceiptSchema = z
+  .object({
+    reference: z
+      .string()
+      .trim()
+      .min(1)
+      .max(128)
+      .regex(/^[A-Za-z0-9._:-]+$/, "백업 참조에는 경로나 공백을 포함할 수 없습니다."),
+    createdAt: z.iso.datetime(),
+    sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  })
+  .strict();
+const acceptedNormalizationBaselineFields = {
+  normalizationRunId: z.uuid(),
+  schemaVersion: z.int().positive(),
+  acceptedAt: z.iso.datetime(),
+  backup: backupReceiptSchema,
+};
+function backupPrecedesAcceptance(acceptance: {
+  acceptedAt: string;
+  backup: { createdAt: string };
+}): boolean {
+  return Date.parse(acceptance.backup.createdAt) <= Date.parse(acceptance.acceptedAt);
+}
+export const normalizationAcceptanceSchema = z
+  .object({
+    ...acceptedNormalizationBaselineFields,
+    previousBaselineNormalizationRunId: z.uuid().nullable(),
+  })
+  .strict()
+  .refine(backupPrecedesAcceptance, {
+    path: ["backup", "createdAt"],
+    message: "백업은 승인 이전에 완료되어야 합니다.",
+  });
+export const acceptedNormalizationBaselineSchema = z
+  .object(acceptedNormalizationBaselineFields)
+  .strict()
+  .refine(backupPrecedesAcceptance, {
+    path: ["backup", "createdAt"],
+    message: "백업은 승인 이전에 완료되어야 합니다.",
+  });
 export const characterSchema = z.object({
   id: recordIdSchema,
   slug: z.string().regex(/^[a-z0-9-]+$/),
@@ -149,5 +190,8 @@ export type Character = z.infer<typeof characterSchema>;
 export type NormalizedRecord = z.infer<typeof normalizedRecordSchema>;
 export type NormalizationDiff = z.infer<typeof normalizationDiffSchema>;
 export type NormalizedRecordDiff = z.infer<typeof normalizedRecordDiffSchema>;
+export type BackupReceipt = z.infer<typeof backupReceiptSchema>;
+export type NormalizationAcceptance = z.infer<typeof normalizationAcceptanceSchema>;
+export type AcceptedNormalizationBaseline = z.infer<typeof acceptedNormalizationBaselineSchema>;
 export type PublicRecord = z.infer<typeof publicRecordSchema>;
 export type PublicSnapshot = z.infer<typeof publicSnapshotSchema>;
