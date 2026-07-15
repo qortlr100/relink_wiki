@@ -7,9 +7,11 @@ import {
 
 const validSnapshot = {
   schemaVersion: 1,
-  contentRevision: "test-revision",
+  contentRevision: "a".repeat(64),
   generatedAt: "2026-07-14T00:00:00.000Z",
-  sourceRevision: "test-source",
+  sourceRevision: "b".repeat(64),
+  extractor: { name: "GBFRDataTools", version: "2.0.0" },
+  recordCounts: { characters: 0, weapons: 0, sigils: 0, skills: 0 },
   characters: [],
   weapons: [],
   sigils: [],
