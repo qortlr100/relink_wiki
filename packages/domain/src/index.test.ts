@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { normalizedRecordSchema, publicSnapshotSchema, recordIdSchema } from "./index";
+import {
+  normalizationDiffSchema,
+  normalizedRecordSchema,
+  publicSnapshotSchema,
+  recordIdSchema,
+} from "./index";
 
 describe("recordIdSchema", () => {
   it("keeps the identifier format open while rejecting unsafe strings", () => {
@@ -58,5 +63,61 @@ describe("publicSnapshotSchema", () => {
         },
       }).success,
     ).toBe(true);
+  });
+});
+
+describe("normalizationDiffSchema", () => {
+  it("accepts a private read-only diff without source payloads", () => {
+    expect(
+      normalizationDiffSchema.safeParse({
+        baselineNormalizationRunId: "7b6eb5c2-17bb-4c24-b4b0-701b080cd29b",
+        candidateNormalizationRunId: "e425bb8f-d65f-4542-9b80-fb44a13cf726",
+        schemaVersion: 1,
+        summary: { added: 0, changed: 1, removed: 0, unchanged: 0 },
+        records: [
+          {
+            category: "character",
+            sourceRecordId: "1",
+            status: "changed",
+            changedFields: ["nameKo"],
+            baseline: { id: "character-10", slug: "gran", nameKo: "그랑" },
+            candidate: { id: "character-10", slug: "gran", nameKo: "그랑 (주인공)" },
+          },
+        ],
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a summary that does not match the record statuses", () => {
+    const result = normalizationDiffSchema.safeParse({
+      baselineNormalizationRunId: "7b6eb5c2-17bb-4c24-b4b0-701b080cd29b",
+      candidateNormalizationRunId: "e425bb8f-d65f-4542-9b80-fb44a13cf726",
+      schemaVersion: 1,
+      summary: { added: 1, changed: 0, removed: 0, unchanged: 0 },
+      records: [],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects changed fields that do not match the before and after values", () => {
+    const result = normalizationDiffSchema.safeParse({
+      baselineNormalizationRunId: "7b6eb5c2-17bb-4c24-b4b0-701b080cd29b",
+      candidateNormalizationRunId: "e425bb8f-d65f-4542-9b80-fb44a13cf726",
+      schemaVersion: 1,
+      summary: { added: 0, changed: 1, removed: 0, unchanged: 0 },
+      records: [
+        {
+          category: "character",
+          sourceRecordId: "1",
+          status: "changed",
+          changedFields: ["slug"],
+          baseline: { id: "character-10", slug: "gran", nameKo: "그랑" },
+          candidate: { id: "character-10", slug: "gran", nameKo: "그랑 (주인공)" },
+        },
+      ],
+    });
+
+    expect(result.success).toBe(false);
   });
 });

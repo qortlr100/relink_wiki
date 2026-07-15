@@ -37,6 +37,93 @@ export const normalizedRecordSchema = z.object({
   reviewState: reviewStateSchema,
   provenance: normalizedProvenanceSchema,
 });
+export const normalizedDiffFieldSchema = z.enum(["id", "slug", "nameKo"]);
+export const normalizedDiffStatusSchema = z.enum(["added", "changed", "removed", "unchanged"]);
+export const normalizedDiffRecordValueSchema = normalizedRecordSchema.pick({
+  id: true,
+  slug: true,
+  nameKo: true,
+});
+const normalizedRecordDiffKeySchema = z.object({
+  category: normalizedCategorySchema,
+  sourceRecordId: z.string().min(1),
+});
+const unchangedFieldsSchema = z.array(normalizedDiffFieldSchema).max(0);
+const changedFieldsSchema = z
+  .array(normalizedDiffFieldSchema)
+  .min(1)
+  .refine((fields) => new Set(fields).size === fields.length, "변경 필드는 중복될 수 없습니다.");
+export const normalizedRecordDiffSchema = z
+  .discriminatedUnion("status", [
+    normalizedRecordDiffKeySchema.extend({
+      status: z.literal("added"),
+      changedFields: unchangedFieldsSchema,
+      baseline: z.null(),
+      candidate: normalizedDiffRecordValueSchema,
+    }),
+    normalizedRecordDiffKeySchema.extend({
+      status: z.literal("changed"),
+      changedFields: changedFieldsSchema,
+      baseline: normalizedDiffRecordValueSchema,
+      candidate: normalizedDiffRecordValueSchema,
+    }),
+    normalizedRecordDiffKeySchema.extend({
+      status: z.literal("removed"),
+      changedFields: unchangedFieldsSchema,
+      baseline: normalizedDiffRecordValueSchema,
+      candidate: z.null(),
+    }),
+    normalizedRecordDiffKeySchema.extend({
+      status: z.literal("unchanged"),
+      changedFields: unchangedFieldsSchema,
+      baseline: normalizedDiffRecordValueSchema,
+      candidate: normalizedDiffRecordValueSchema,
+    }),
+  ])
+  .superRefine((record, context) => {
+    if (record.status !== "changed" && record.status !== "unchanged") {
+      return;
+    }
+    const actualChangedFields = normalizedDiffFieldSchema.options.filter(
+      (field) => record.baseline[field] !== record.candidate[field],
+    );
+    const declaredChangedFields = new Set(record.changedFields);
+    const fieldsMatch =
+      actualChangedFields.length === record.changedFields.length &&
+      actualChangedFields.every((field) => declaredChangedFields.has(field));
+    if (!fieldsMatch) {
+      context.addIssue({
+        code: "custom",
+        path: ["changedFields"],
+        message: "변경 필드가 전후 레코드 값과 일치하지 않습니다.",
+      });
+    }
+  });
+export const normalizationDiffSchema = z
+  .object({
+    baselineNormalizationRunId: z.uuid(),
+    candidateNormalizationRunId: z.uuid(),
+    schemaVersion: z.int().positive(),
+    summary: z.object({
+      added: z.int().nonnegative(),
+      changed: z.int().nonnegative(),
+      removed: z.int().nonnegative(),
+      unchanged: z.int().nonnegative(),
+    }),
+    records: z.array(normalizedRecordDiffSchema),
+  })
+  .superRefine((diff, context) => {
+    for (const status of normalizedDiffStatusSchema.options) {
+      const actualCount = diff.records.filter((record) => record.status === status).length;
+      if (diff.summary[status] !== actualCount) {
+        context.addIssue({
+          code: "custom",
+          path: ["summary", status],
+          message: "요약 건수가 레코드 비교 결과와 일치하지 않습니다.",
+        });
+      }
+    }
+  });
 export const characterSchema = z.object({
   id: recordIdSchema,
   slug: z.string().regex(/^[a-z0-9-]+$/),
@@ -60,5 +147,7 @@ export const publicSnapshotSchema = z.object({
 });
 export type Character = z.infer<typeof characterSchema>;
 export type NormalizedRecord = z.infer<typeof normalizedRecordSchema>;
+export type NormalizationDiff = z.infer<typeof normalizationDiffSchema>;
+export type NormalizedRecordDiff = z.infer<typeof normalizedRecordDiffSchema>;
 export type PublicRecord = z.infer<typeof publicRecordSchema>;
 export type PublicSnapshot = z.infer<typeof publicSnapshotSchema>;

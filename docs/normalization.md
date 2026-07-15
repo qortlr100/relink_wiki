@@ -54,7 +54,7 @@ After setting `RELINK_DATABASE_PATH` and `RELINK_NORMALIZATION_MAPPING_PATH` in 
 pnpm --filter @relink-wiki/extractor normalize:mapped
 ```
 
-The command applies pending migrations and writes the mapped records in one transaction. Every new record starts with the literal `staged` review state. It does not update review decisions, generate a public snapshot, or publish anything.
+The command applies pending migrations and writes the mapped records in one transaction. Every new record starts with the literal `staged` review state. Compatible normalization runs can be compared later through the read-only contract in [`normalization-diff.md`](normalization-diff.md), but this command does not update review decisions, generate a public snapshot, or publish anything.
 
 The idempotency fingerprint covers the selected import, normalization schema version, mapping fields, and source payload hashes. Re-running the same logical input reuses the original normalization run. A changed mapping creates a new versioned run instead of replacing previously normalized records.
 
