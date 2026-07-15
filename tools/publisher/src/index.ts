@@ -8,6 +8,8 @@ import {
 import { publicSnapshotSchema, type PublicRecord, type PublicSnapshot } from "@relink-wiki/domain";
 import { z } from "zod";
 
+export * from "./snapshot-writer";
+
 const publicSnapshotPreviewInputSchema = z
   .object({
     schemaVersion: z.literal(1),

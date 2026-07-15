@@ -7,7 +7,7 @@ Granblue Fantasy: Relink 데이터를 로컬에서 추출·검수하고, 승인�
 - 공개 위키는 검증된 버전 1 정적 JSON 스냅샷에서 캐릭터, 무기, 진, 스킬의 검색·목록·상세 화면을 제공합니다. 저장소에 포함된 스냅샷은 UI 검증용 샘플이며 실제 게임 데이터 발행본이 아닙니다.
 - 로컬 마이닝 관리 도구는 `127.0.0.1:3100`에만 바인딩되는 최소 화면만 구현되어 있습니다. 추출 실행, 변경점 검수, 리뷰와 발행 UI는 아직 연결되지 않았습니다.
 - 추출기 패키지는 GBFRDataTools `2.0.0` 실행 전 점검, 후보 SQLite의 private staging import, 명시적 매핑 기반 normalization, 한국어 메시지 조인 범위 검증을 지원합니다.
-- 데이터베이스 패키지는 두 private normalization 실행의 공개 후보 필드를 읽기 전용으로 비교하고, NAS 백업 증빙과 baseline 동시성 확인을 거친 명시적 승인을 영속화합니다. publisher 패키지는 승인된 baseline에서 allowlist 공개 DTO와 검증 가능한 manifest 미리보기를 만들며 파일을 쓰거나 상태를 변경하지 않습니다. 관리 UI, 거절 검수와 실제 스냅샷 파일 교체·배포는 다음 구현 범위입니다.
+- 데이터베이스 패키지는 두 private normalization 실행의 공개 후보 필드를 읽기 전용으로 비교하고, NAS 백업 증빙과 baseline 동시성 확인을 거친 명시적 승인을 영속화합니다. publisher 패키지는 승인된 baseline에서 allowlist 공개 DTO와 검증 가능한 manifest 미리보기를 만들고, 별도의 명시적 호출에서 백업·현재 리비전 gate를 거쳐 version 1 JSON 파일을 원자적으로 교체·재검증합니다. 관리 UI, 거절 검수, publication 이력·DB 상태 전환과 배포는 다음 구현 범위입니다.
 
 ## 요구 사항
 
@@ -72,7 +72,7 @@ pnpm --filter @relink-wiki/extractor localization:validate
 
 정규화 실행 승인, NAS 백업 증빙과 스키마 버전별 baseline 계약은 [`docs/normalization-review.md`](docs/normalization-review.md)를 참고하세요. 승인은 레코드를 `reviewed`로 전환하지만 공개 스냅샷을 만들거나 발행하지 않습니다.
 
-승인된 baseline에서 공개 가능한 필드만 추려 manifest 미리보기를 만드는 계약은 [`docs/publication-preview.md`](docs/publication-preview.md)를 참고하세요. 현재 API는 메모리에서 결과를 반환할 뿐 스냅샷 파일, DB 검수 상태나 Sites 배포를 변경하지 않습니다.
+승인된 baseline에서 공개 가능한 필드만 추려 manifest 미리보기를 만들고 이를 검증된 version 1 JSON 후보 파일로 쓰는 계약은 [`docs/publication-preview.md`](docs/publication-preview.md)를 참고하세요. 파일 쓰기는 별도의 명시적 API이며 DB 검수 상태, publication 이력이나 Sites 배포를 변경하지 않습니다.
 
 구현 상태와 public/private 경계는 [`docs/architecture.md`](docs/architecture.md), 전체 개발 기준선과 단계별 상태는 [`docs/development-baseline.md`](docs/development-baseline.md)를 참고하세요.
 

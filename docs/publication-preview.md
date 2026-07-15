@@ -1,8 +1,8 @@
-# Public snapshot preview
+# Public snapshot preview and candidate write
 
 ## Scope
 
-The publisher package builds a deterministic version 1 public snapshot preview from the current accepted normalization baseline. The preview is an in-memory value only. It does not write or replace a JSON file, mutate review state, record a publication event, commit generated data, or deploy the public wiki.
+The publisher package builds a deterministic version 1 public snapshot preview from the current accepted normalization baseline. Preview generation is an in-memory operation. A separate explicit writer can persist that validated value as a JSON candidate after its own backup and concurrency gates. Neither operation mutates review state, records a publication event, commits generated data, or deploys the public wiki.
 
 ## Source gate
 
@@ -24,6 +24,14 @@ Only `id`, `slug` and `nameKo` are copied into the four public collections. The 
 
 The internal baseline identity is hashed into a 64-character `sourceRevision`. `contentRevision` is a SHA-256 digest of the deterministically sorted public collections. The manifest also includes the fixed extractor name, its accepted version and record counts that the domain schema checks against each collection.
 
+## Candidate file write
+
+`writePublicSnapshot` accepts a complete `publicSnapshotSchema` value rather than private database rows. The caller must provide a path-free NAS backup receipt completed no later than the write time and the content revision observed during preview. A `null` expected revision permits only the first write; an existing file or a mismatched revision aborts the operation so a stale preview cannot replace newer output.
+
+The output directory must already exist as an absolute, non-symlinked directory controlled by the local operator. The writer uses the fixed filename `public-snapshot.v1.json`, holds an exclusive sibling lock, writes and flushes a uniquely named sibling temporary file, then renames it over the target. It reads the result again, validates the complete JSON contract, compares the exact bytes and returns a SHA-256 file digest. Byte-identical retries are safe and reported as reused. Errors expose stable codes and Korean messages without returning the output path or backup reference.
+
+This API can be tested with temporary directories on any supported development platform. The first use against the canonical Windows output location and NAS backup still requires local operator verification.
+
 ## Current integration boundary
 
-The mining admin does not call this API yet. A later explicit publication flow must show the preview or its diff, create and verify the publication backup, write the generated snapshot atomically, record publication history, and then offer deployment. The repository's sample snapshot remains UI fixture data rather than a generated release.
+The mining admin does not call these APIs yet. A later publication transaction must show the preview or its diff, invoke the candidate writer, record publication history, change the accepted records to `published` only after the file commit, and then offer deployment. The repository's sample snapshot remains UI fixture data rather than a generated release.
