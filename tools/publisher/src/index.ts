@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import {
   getAcceptedNormalizationSnapshotSource,
+  PublicationRepositoryError,
   type openDatabase,
   type ReviewedPublicationRecord,
 } from "@relink-wiki/database";
@@ -45,6 +46,21 @@ function toPublicRecord(record: ReviewedPublicationRecord): PublicRecord {
   };
 }
 
+function getPreviewSource(db: RelinkDatabase, schemaVersion: number) {
+  try {
+    return getAcceptedNormalizationSnapshotSource(db, schemaVersion);
+  } catch (error) {
+    if (error instanceof PublicationRepositoryError) {
+      throw new PublicSnapshotPreviewError(
+        "PUBLIC_SNAPSHOT_PREVIEW_SOURCE_INVALID",
+        "공개 스냅샷 미리보기의 승인된 baseline을 읽을 수 없습니다.",
+        [error.code, ...error.details],
+      );
+    }
+    throw error;
+  }
+}
+
 export function createPublicSnapshotPreview(db: RelinkDatabase, input: unknown): PublicSnapshot {
   const validation = publicSnapshotPreviewInputSchema.safeParse(input);
   if (!validation.success) {
@@ -54,7 +70,7 @@ export function createPublicSnapshotPreview(db: RelinkDatabase, input: unknown):
     );
   }
 
-  const source = getAcceptedNormalizationSnapshotSource(db, validation.data.schemaVersion);
+  const source = getPreviewSource(db, validation.data.schemaVersion);
   if (Date.parse(validation.data.generatedAt) < Date.parse(source.acceptedAt)) {
     throw new PublicSnapshotPreviewError(
       "PUBLIC_SNAPSHOT_PREVIEW_INPUT_INVALID",

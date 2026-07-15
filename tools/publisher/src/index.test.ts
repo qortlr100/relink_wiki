@@ -132,7 +132,12 @@ describe("public snapshot preview", () => {
         schemaVersion: 1,
         generatedAt: "2026-07-15T03:00:00.000Z",
       }),
-    ).toThrow(expect.objectContaining({ code: "ACCEPTED_BASELINE_NOT_FOUND" }));
+    ).toThrow(
+      expect.objectContaining({
+        code: "PUBLIC_SNAPSHOT_PREVIEW_SOURCE_INVALID",
+        details: ["ACCEPTED_BASELINE_NOT_FOUND"],
+      }),
+    );
   });
 
   it("rejects a generation timestamp before baseline acceptance", () => {
@@ -167,8 +172,8 @@ describe("public snapshot preview", () => {
       throw new Error("The drifted baseline should have failed.");
     } catch (error) {
       expect(error).toMatchObject({
-        code: "ACCEPTED_BASELINE_REVIEW_STATE_INVALID",
-        details: ["character: 1"],
+        code: "PUBLIC_SNAPSHOT_PREVIEW_SOURCE_INVALID",
+        details: ["ACCEPTED_BASELINE_REVIEW_STATE_INVALID", "character: 1"],
       });
       expect(JSON.stringify(error)).not.toContain("character-1");
     }

@@ -14,7 +14,7 @@ The publisher package builds a deterministic version 1 public snapshot preview f
 - a record schema or public candidate field is invalid;
 - records disagree on the pinned extractor version.
 
-Review-state drift aborts the whole preview rather than silently omitting records and producing a partial snapshot. Its error exposes only category-level invalid counts, not record IDs or private values. Final manifest validation uses a separate output-error code and safe schema issue paths so implementation regressions remain diagnosable.
+Review-state drift aborts the whole preview rather than silently omitting records and producing a partial snapshot. The publisher maps repository failures to its own `PUBLIC_SNAPSHOT_PREVIEW_SOURCE_INVALID` contract while retaining only the safe repository reason code and category-level invalid counts, not record IDs or private values. Final manifest validation uses a separate output-error code and safe schema issue paths so implementation regressions remain diagnosable.
 
 Acceptance already requires verified NAS backup evidence. The preview reads that acceptance boundary but does not return its backup receipt or create another backup.
 
