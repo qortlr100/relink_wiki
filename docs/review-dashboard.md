@@ -12,6 +12,8 @@ The application opens an existing database with SQLite `readonly`, `fileMustExis
 - baseline acceptance time and path-free NAS backup reference, creation time, and SHA-256;
 - current publication time, content revision, total count, and category counts.
 
+Category and review-state totals are grouped inside SQLite rather than loading private records into application memory. For a current publication, the live category total must still equal the immutable publication record count; a mismatch fails as an invalid-database state instead of displaying inconsistent audit data.
+
 The dashboard's current baseline, preview, and publication panels are all scoped to the publisher's supported schema version 1. A baseline accepted for another schema version may appear in the normalization run history, but it does not replace the version 1 publication boundary. The application may call the existing publisher preview in memory when the current version 1 baseline remains fully `reviewed`. It displays only the deterministic allowlist content revision and per-category counts. After the same baseline has been finalized as `published`, the panel shows the current recorded publication revision and counts instead.
 
 Run UUIDs, publication UUIDs, import identifiers, source file identifiers, filesystem paths, names, slugs, raw staging payloads, normalized record values, and database exception details are not included in the dashboard model.

@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { asc, count, eq } from "drizzle-orm";
 import {
   backupReceiptSchema,
   normalizedCategorySchema,
@@ -39,13 +39,27 @@ const dashboardBaselineSchema = z.object({
   categoryCounts: categoryCountsSchema,
   reviewStateCounts: reviewStateCountsSchema,
 });
-const dashboardPublicationSchema = z.object({
-  schemaVersion: z.literal(1),
-  publishedAt: z.iso.datetime(),
-  contentRevision: z.string().regex(/^[0-9a-f]{64}$/),
-  recordCount: z.int().positive(),
-  categoryCounts: categoryCountsSchema,
-});
+const dashboardPublicationSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    publishedAt: z.iso.datetime(),
+    contentRevision: z.string().regex(/^[0-9a-f]{64}$/),
+    recordCount: z.int().positive(),
+    categoryCounts: categoryCountsSchema,
+  })
+  .superRefine((publication, context) => {
+    const categorizedRecordCount = Object.values(publication.categoryCounts).reduce(
+      (total, categoryCount) => total + categoryCount,
+      0,
+    );
+    if (categorizedRecordCount !== publication.recordCount) {
+      context.addIssue({
+        code: "custom",
+        path: ["categoryCounts"],
+        message: "Category counts must equal the immutable publication record count.",
+      });
+    }
+  });
 const reviewDashboardSchema = z.object({
   normalizationRuns: z.array(dashboardRunSchema),
   currentBaseline: dashboardBaselineSchema.nullable(),
@@ -97,8 +111,14 @@ export function getReviewDashboard(db: RelinkDatabase): ReviewDashboard {
         normalizationRunId: normalizedRecords.normalizationRunId,
         category: normalizedRecords.category,
         reviewState: normalizedRecords.reviewState,
+        recordCount: count(),
       })
       .from(normalizedRecords)
+      .groupBy(
+        normalizedRecords.normalizationRunId,
+        normalizedRecords.category,
+        normalizedRecords.reviewState,
+      )
       .all();
 
     for (const row of countRows) {
@@ -108,8 +128,8 @@ export function getReviewDashboard(db: RelinkDatabase): ReviewDashboard {
         categoryCounts: emptyCategoryCounts(),
         reviewStateCounts: emptyReviewStateCounts(),
       };
-      counts.categoryCounts[category] += 1;
-      counts.reviewStateCounts[reviewState] += 1;
+      counts.categoryCounts[category] += row.recordCount;
+      counts.reviewStateCounts[reviewState] += row.recordCount;
       countsByRun.set(row.normalizationRunId, counts);
     }
 

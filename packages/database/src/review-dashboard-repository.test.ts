@@ -7,6 +7,7 @@ import {
   importStagingRecords,
   normalizeMappedRecords,
   openDatabase,
+  ReviewDashboardError,
 } from "./index";
 
 const openConnections: ReturnType<typeof openDatabase>[] = [];
@@ -181,5 +182,13 @@ describe("review dashboard repository", () => {
       recordCount: 4,
       categoryCounts: { character: 1, weapon: 1, sigil: 1, skill: 1 },
     });
+
+    connection.sqlite
+      .prepare(
+        "DELETE FROM normalized_records WHERE normalization_run_id = ? AND category = 'skill'",
+      )
+      .run(normalizationRunId);
+
+    expect(() => getReviewDashboard(connection.db)).toThrow(ReviewDashboardError);
   });
 });
