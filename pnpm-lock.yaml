@@ -32,9 +32,15 @@ importers:
 
   apps/mining-admin:
     dependencies:
+      '@relink-wiki/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       '@relink-wiki/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@relink-wiki/publisher':
+        specifier: workspace:*
+        version: link:../../tools/publisher
       next:
         specifier: 16.2.10
         version: 16.2.10(react-dom@19.2.7(react@19.2.7))(react@19.2.7)

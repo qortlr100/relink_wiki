@@ -55,15 +55,15 @@ The currently validated extraction baseline pins GBFRDataTools `2.0.0` and requi
 
 Each stage has a separate input/output contract. The current repository status is:
 
-| Stage         | Status      | Current contract                                                                                                                                                                     |
-| ------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **extract**   | Partial     | Preflight and a documented read-only GBFRDataTools workflow exist; the repository does not invoke extraction yet.                                                                    |
-| **import**    | Implemented | Imports four allowlisted candidate tables into private staging records with provenance and idempotency.                                                                              |
-| **normalize** | Implemented | Generates a private review candidate from canonical resolved localization joins, then maps only the explicitly reviewed JSON into versioned `staged` records.                        |
-| **diff**      | Implemented | A read-only engine compares two compatible private normalization runs with deterministic, allowlisted results.                                                                       |
-| **review**    | Partial     | Explicit run acceptance persists backup evidence, immutable history and one baseline per schema version; rejection, per-record review and admin integration remain.                  |
-| **publish**   | Partial     | Generates and atomically writes a deterministic allowlisted candidate, then records immutable publication history and the DB `published` transition; admin UI and deployment remain. |
-| **verify**    | Partial     | Domain, wiki and publisher validate the complete snapshot; candidate bytes are re-read and hashed, while deployment verification is not built.                                       |
+| Stage         | Status      | Current contract                                                                                                                                                                  |
+| ------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **extract**   | Partial     | Preflight and a documented read-only GBFRDataTools workflow exist; the repository does not invoke extraction yet.                                                                 |
+| **import**    | Implemented | Imports four allowlisted candidate tables into private staging records with provenance and idempotency.                                                                           |
+| **normalize** | Implemented | Generates a private review candidate from canonical resolved localization joins, then maps only the explicitly reviewed JSON into versioned `staged` records.                     |
+| **diff**      | Implemented | A read-only engine compares two compatible private normalization runs with deterministic, allowlisted results.                                                                    |
+| **review**    | Partial     | Explicit run acceptance persists backup evidence and one baseline per schema version; the local admin shows read-only aggregate status, while rejection and write actions remain. |
+| **publish**   | Partial     | Generates and atomically writes a deterministic allowlisted candidate, records immutable history and shows read-only admin status; write controls and deployment remain.          |
+| **verify**    | Partial     | Domain, wiki and publisher validate the complete snapshot; candidate bytes are re-read and hashed, while deployment verification is not built.                                    |
 
 Stages must be independently repeatable and must not infer success from file existence alone.
 
@@ -75,7 +75,7 @@ The mapped normalization increment accepts the private, explicitly reviewed mapp
 
 The read-only localization validator establishes the current `chara.CharaName`, `weapon.Name`, `gem.Name`, and `ability.Unk5` joins against the extracted Korean message catalogs. It reports only coverage counts and keeps unresolved or empty-key rows out of automatic normalization. See [`localization-validation.md`](localization-validation.md).
 
-The read-only normalization diff pairs records by normalized category and source record ID, compares only the public candidate fields, reports deterministic status counts, and rejects cross-schema comparisons. A separate atomic acceptance contract requires verified, path-free NAS backup evidence, prevents stale baseline replacement, preserves prior acceptance history, and changes the accepted run's records from `staged` to `reviewed`. Neither contract is connected to the local admin yet. See [`normalization-diff.md`](normalization-diff.md) and [`normalization-review.md`](normalization-review.md).
+The read-only normalization diff pairs records by normalized category and source record ID, compares only the public candidate fields, reports deterministic status counts, and rejects cross-schema comparisons. A separate atomic acceptance contract requires verified, path-free NAS backup evidence, prevents stale baseline replacement, preserves prior acceptance history, and changes the accepted run's records from `staged` to `reviewed`. The local admin now summarizes run/category/review-state counts and the current acceptance boundary without returning record values or internal identifiers; diff details and all write actions remain later work. See [`normalization-diff.md`](normalization-diff.md), [`normalization-review.md`](normalization-review.md), and [`review-dashboard.md`](review-dashboard.md).
 
 ## Public snapshot contract
 

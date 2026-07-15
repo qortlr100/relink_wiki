@@ -36,7 +36,7 @@ Quests, enemies, items, and other categories are future scope and require an exp
 
 ### Local mining admin
 
-The admin application binds to `127.0.0.1:3100` in its development command and currently renders only a local-only status placeholder. The database package exposes read-only normalization diff and explicit acceptance contracts, but extractor runs, import errors, record differences, review actions, asset status, and publication controls are not connected to the app yet. When implemented, publishing must remain an explicit operation with a preview or diff.
+The admin application binds to `127.0.0.1:3100` in its development command. It opens only the configured `RELINK_DATABASE_PATH` in SQLite read-only mode and renders aggregate normalization runs, the current accepted baseline and path-free backup evidence, review-state/category counts, current publication status, and the allowlisted preview revision/counts. Its page model excludes run identifiers, source paths, raw payloads, normalized record values, and database error details. Extractor execution, record differences, review actions, asset status, publication controls, and rollback are not connected to the app. See [`review-dashboard.md`](review-dashboard.md).
 
 ## Publication strategy
 

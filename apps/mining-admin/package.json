@@ -8,7 +8,9 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@relink-wiki/database": "workspace:*",
     "@relink-wiki/domain": "workspace:*",
+    "@relink-wiki/publisher": "workspace:*",
     "next": "16.2.10",
     "react": "19.2.7",
     "react-dom": "19.2.7",
