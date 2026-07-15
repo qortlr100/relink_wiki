@@ -6,13 +6,15 @@ The publisher package builds a deterministic version 1 public snapshot preview f
 
 ## Source gate
 
-`createPublicSnapshotPreview` requires a positive supported schema version and an ISO timestamp. The database repository resolves the current accepted baseline for that schema version and refuses to continue when:
+`createPublicSnapshotPreview` requires a positive supported schema version and an ISO timestamp no earlier than the baseline acceptance. The database repository resolves the current accepted baseline for that schema version and refuses to continue when:
 
 - no accepted baseline exists;
 - the baseline contains no records;
 - a record no longer has the `reviewed` state;
 - a record schema or public candidate field is invalid;
 - records disagree on the pinned extractor version.
+
+Review-state drift aborts the whole preview rather than silently omitting records and producing a partial snapshot. Its error exposes only category-level invalid counts, not record IDs or private values. Final manifest validation uses a separate output-error code and safe schema issue paths so implementation regressions remain diagnosable.
 
 Acceptance already requires verified NAS backup evidence. The preview reads that acceptance boundary but does not return its backup receipt or create another backup.
 

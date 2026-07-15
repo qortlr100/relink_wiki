@@ -25,12 +25,16 @@ export interface AcceptedNormalizationSnapshotSource {
 }
 
 export type PublicationRepositoryErrorCode =
-  "PUBLICATION_INPUT_INVALID" | "ACCEPTED_BASELINE_NOT_FOUND" | "ACCEPTED_BASELINE_INVALID";
+  | "PUBLICATION_INPUT_INVALID"
+  | "ACCEPTED_BASELINE_NOT_FOUND"
+  | "ACCEPTED_BASELINE_INVALID"
+  | "ACCEPTED_BASELINE_REVIEW_STATE_INVALID";
 
 export class PublicationRepositoryError extends Error {
   constructor(
     readonly code: PublicationRepositoryErrorCode,
     message: string,
+    readonly details: readonly string[] = [],
   ) {
     super(message);
     this.name = "PublicationRepositoryError";
@@ -79,6 +83,26 @@ export function getAcceptedNormalizationSnapshotSource(
       asc(normalizedRecords.slug),
     )
     .all();
+
+  const invalidReviewStateCounts = new Map<string, number>();
+  for (const row of rows) {
+    if (row.reviewState !== "reviewed") {
+      invalidReviewStateCounts.set(
+        row.category,
+        (invalidReviewStateCounts.get(row.category) ?? 0) + 1,
+      );
+    }
+  }
+  if (invalidReviewStateCounts.size > 0) {
+    const details = [...invalidReviewStateCounts.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([category, count]) => `${category}: ${String(count)}`);
+    throw new PublicationRepositoryError(
+      "ACCEPTED_BASELINE_REVIEW_STATE_INVALID",
+      "승인된 baseline의 레코드 검수 상태가 일치하지 않습니다.",
+      details,
+    );
+  }
 
   const records = rows.map(({ schemaVersion: recordSchemaVersion, ...row }) => {
     if (recordSchemaVersion !== validation.data) {

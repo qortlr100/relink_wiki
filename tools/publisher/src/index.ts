@@ -17,12 +17,15 @@ const publicSnapshotPreviewInputSchema = z
 type RelinkDatabase = ReturnType<typeof openDatabase>["db"];
 
 export type PublicSnapshotPreviewErrorCode =
-  "PUBLIC_SNAPSHOT_PREVIEW_INPUT_INVALID" | "PUBLIC_SNAPSHOT_PREVIEW_SOURCE_INVALID";
+  | "PUBLIC_SNAPSHOT_PREVIEW_INPUT_INVALID"
+  | "PUBLIC_SNAPSHOT_PREVIEW_SOURCE_INVALID"
+  | "PUBLIC_SNAPSHOT_PREVIEW_OUTPUT_INVALID";
 
 export class PublicSnapshotPreviewError extends Error {
   constructor(
     readonly code: PublicSnapshotPreviewErrorCode,
     message: string,
+    readonly details: readonly string[] = [],
   ) {
     super(message);
     this.name = "PublicSnapshotPreviewError";
@@ -52,6 +55,12 @@ export function createPublicSnapshotPreview(db: RelinkDatabase, input: unknown):
   }
 
   const source = getAcceptedNormalizationSnapshotSource(db, validation.data.schemaVersion);
+  if (Date.parse(validation.data.generatedAt) < Date.parse(source.acceptedAt)) {
+    throw new PublicSnapshotPreviewError(
+      "PUBLIC_SNAPSHOT_PREVIEW_INPUT_INVALID",
+      "공개 스냅샷은 baseline 승인 이후에 생성되어야 합니다.",
+    );
+  }
   const extractorVersions = new Set(source.records.map((record) => record.extractorVersion));
   if (extractorVersions.size !== 1) {
     throw new PublicSnapshotPreviewError(
@@ -98,8 +107,9 @@ export function createPublicSnapshotPreview(db: RelinkDatabase, input: unknown):
   const result = publicSnapshotSchema.safeParse(snapshot);
   if (!result.success) {
     throw new PublicSnapshotPreviewError(
-      "PUBLIC_SNAPSHOT_PREVIEW_SOURCE_INVALID",
-      "승인된 baseline으로 유효한 공개 스냅샷 미리보기를 만들 수 없습니다.",
+      "PUBLIC_SNAPSHOT_PREVIEW_OUTPUT_INVALID",
+      "생성된 공개 스냅샷 미리보기가 출력 계약을 충족하지 않습니다.",
+      result.error.issues.map((issue) => `${issue.path.join(".") || "snapshot"}: ${issue.message}`),
     );
   }
   return result.data;

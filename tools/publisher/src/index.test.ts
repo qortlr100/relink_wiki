@@ -135,18 +135,42 @@ describe("public snapshot preview", () => {
     ).toThrow(expect.objectContaining({ code: "ACCEPTED_BASELINE_NOT_FOUND" }));
   });
 
-  it("rejects a baseline whose reviewed state has drifted", () => {
+  it("rejects a generation timestamp before baseline acceptance", () => {
+    const connection = createConnection();
+    createAcceptedBaseline(connection);
+
+    expect(() =>
+      createPublicSnapshotPreview(connection.db, {
+        schemaVersion: 1,
+        generatedAt: "2026-07-15T02:09:59.999Z",
+      }),
+    ).toThrow(
+      expect.objectContaining({
+        code: "PUBLIC_SNAPSHOT_PREVIEW_INPUT_INVALID",
+        message: "공개 스냅샷은 baseline 승인 이후에 생성되어야 합니다.",
+      }),
+    );
+  });
+
+  it("rejects a drifted review state with privacy-safe category counts", () => {
     const connection = createConnection();
     createAcceptedBaseline(connection);
     connection.sqlite
       .prepare("UPDATE normalized_records SET review_state = 'staged' WHERE id = 'character-1'")
       .run();
 
-    expect(() =>
+    try {
       createPublicSnapshotPreview(connection.db, {
         schemaVersion: 1,
         generatedAt: "2026-07-15T03:00:00.000Z",
-      }),
-    ).toThrow(expect.objectContaining({ code: "ACCEPTED_BASELINE_INVALID" }));
+      });
+      throw new Error("The drifted baseline should have failed.");
+    } catch (error) {
+      expect(error).toMatchObject({
+        code: "ACCEPTED_BASELINE_REVIEW_STATE_INVALID",
+        details: ["character: 1"],
+      });
+      expect(JSON.stringify(error)).not.toContain("character-1");
+    }
   });
 });
