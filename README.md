@@ -5,7 +5,7 @@ Granblue Fantasy: Relink 데이터를 로컬에서 추출·검수하고, 승인�
 ## 현재 구현 범위
 
 - 공개 위키는 검증된 버전 1 정적 JSON 스냅샷에서 캐릭터, 무기, 진, 스킬의 검색·목록·상세 화면을 제공합니다. 저장소에 포함된 스냅샷은 UI 검증용 샘플이며 실제 게임 데이터 발행본이 아닙니다.
-- 로컬 마이닝 관리 도구는 `127.0.0.1:3100`에만 바인딩되는 최소 화면만 구현되어 있습니다. 추출 실행, 변경점 검수, 리뷰와 발행 UI는 아직 연결되지 않았습니다.
+- 로컬 마이닝 관리 도구는 `127.0.0.1:3100`에만 바인딩되며, `RELINK_DATABASE_PATH`의 SQLite를 읽기 전용으로 열어 normalization 실행, 현재 baseline, 백업 증빙, review state, publication 및 allowlist 미리보기 현황을 표시합니다. 승인·발행 쓰기와 레코드별 검수 UI는 아직 연결되지 않았습니다.
 - 추출기 패키지는 GBFRDataTools `2.0.0` 실행 전 점검, 후보 SQLite의 private staging import, 한국어 메시지 조인 검증, 검수용 mapping 후보 생성과 명시적 매핑 기반 normalization을 지원합니다.
 - 데이터베이스 패키지는 두 private normalization 실행의 공개 후보 필드를 읽기 전용으로 비교하고, NAS 백업 증빙과 baseline 동시성 확인을 거친 명시적 승인을 영속화합니다. publisher 패키지는 승인된 baseline에서 allowlist 공개 DTO와 검증 가능한 manifest 미리보기를 만들고, 별도의 명시적 호출에서 백업·현재 리비전 gate를 거쳐 version 1 JSON 파일을 원자적으로 교체·재검증합니다. 검증된 쓰기 결과는 immutable publication 이력과 현재 포인터로 기록되며 해당 baseline은 한 SQLite transaction에서 `published`로 전환됩니다. 관리 UI, 거절 검수, 배포와 이전 공개본 복구는 다음 구현 범위입니다.
 
@@ -34,7 +34,7 @@ pnpm dev:admin
 - 공개 위키: `http://localhost:3000`
 - 로컬 관리 도구: `http://127.0.0.1:3100`
 
-관리 도구는 기본적으로 `127.0.0.1:3100`에만 바인딩됩니다. 추출기 설정은 `.env.example`을 참고하되 실제 경로와 데이터는 커밋하지 않습니다.
+관리 도구는 기본적으로 `127.0.0.1:3100`에만 바인딩됩니다. 실행 전에 비공개 셸 환경에 `RELINK_DATABASE_PATH`를 설정해야 하며, 앱은 해당 파일을 생성하거나 마이그레이션하지 않고 읽기 전용으로 엽니다. 미설정·누락·손상 상태는 경로나 내부 값을 노출하지 않는 오류 화면으로 표시됩니다. 자세한 화면 계약은 [`docs/review-dashboard.md`](docs/review-dashboard.md)를 참고하세요. 추출기 설정은 `.env.example`을 참고하되 실제 경로와 데이터는 커밋하지 않습니다.
 
 GBFRDataTools를 사용하기 전에는 비공개 `.env`를 로드한 셸에서 실행 전 점검을 통과해야 합니다.
 
