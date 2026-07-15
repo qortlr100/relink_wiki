@@ -62,8 +62,8 @@ Each stage has a separate input/output contract. The current repository status i
 | **normalize** | Implemented | Maps explicitly selected staging rows into versioned `staged` normalized records; Korean display-name joins are reproducibly validated but not applied automatically. |
 | **diff**      | Implemented | A read-only engine compares two compatible private normalization runs with deterministic, allowlisted results.                                                        |
 | **review**    | Partial     | Explicit run acceptance persists backup evidence, immutable history and one baseline per schema version; rejection, per-record review and admin integration remain.   |
-| **publish**   | Not started | Will generate allowlisted public DTOs and a versioned manifest after preview.                                                                                         |
-| **verify**    | Partial     | Domain and wiki loaders validate the prototype snapshot; generated-release verification is not built.                                                                 |
+| **publish**   | Partial     | Generates a deterministic allowlisted manifest preview from the accepted baseline; file writes, publication history and deployment remain unimplemented.              |
+| **verify**    | Partial     | Domain and wiki loaders validate manifest counts and the complete snapshot; generated-file and deployment verification are not built.                                 |
 
 Stages must be independently repeatable and must not infer success from file existence alone.
 
@@ -77,27 +77,11 @@ The read-only normalization diff pairs records by normalized category and source
 
 ## Public snapshot contract
 
-The current version 1 prototype snapshot is validated by `publicSnapshotSchema` in `packages/domain`. It contains the four allowlisted collections `characters`, `weapons`, `sigils`, and `skills` together with `schemaVersion`, `contentRevision`, `generatedAt`, and `sourceRevision`. Prototype records expose only their public identifier, slug, Korean display name, and the literal `published` review state.
+The current version 1 snapshot contract is validated by `publicSnapshotSchema` in `packages/domain`. It contains the four allowlisted collections `characters`, `weapons`, `sigils`, and `skills` together with `schemaVersion`, SHA-256 `contentRevision` and `sourceRevision`, `generatedAt`, extractor identity and verified per-collection counts. Public records expose only their public identifier, slug, Korean display name, and the literal `published` review state.
 
 The wiki imports `apps/wiki/public/data/public-snapshot.v1.json` as a build-time static asset and validates the complete value before deriving search, list, and detail records. Invalid records or unsupported schema versions fail with the stable `PUBLIC_SNAPSHOT_INVALID` error code. The loader does not access the filesystem, local database, extractor output, or mining admin at runtime. Replace this file only with an explicitly reviewed publisher output; its current contents remain prototype sample records rather than a real game-data release.
 
-This prototype contract is intentionally smaller than the final publication manifest. Before the first real data release, the publisher will add and validate release metadata similar to:
-
-```ts
-type SnapshotManifest = {
-  schemaVersion: number;
-  contentRevision: string;
-  generatedAt: string;
-  sourceRevision: string;
-  extractor: {
-    name: "GBFRDataTools";
-    version: string;
-  };
-  recordCounts: Record<string, number>;
-};
-```
-
-The final publication manifest schema will be defined with Zod and inferred into TypeScript when the publisher is implemented. Public DTOs are allowlists and must not reuse private database row types directly. Do not treat the in-app sample snapshot as a generated public release.
+The publisher preview reads only the accepted schema-version baseline, requires every selected record to remain `reviewed`, verifies one extractor version, sorts records deterministically and maps only `id`, `slug` and `nameKo` into public DTOs. It hashes the internal acceptance identity into `sourceRevision`, so private run identifiers, source paths, import provenance and backup evidence are not exposed. The preview returns an in-memory value and does not replace the in-app sample file, mark database records `published`, record a publication event or deploy Sites. See [`publication-preview.md`](publication-preview.md).
 
 The project does not maintain a normal game-version history because it targets the expected final content state. If a development-time game transition changes extraction or normalized semantics, record a one-off compatibility label on that import rather than introducing a permanent version catalog.
 

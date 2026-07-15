@@ -18,7 +18,7 @@ This document describes the architecture that exists in the repository today. Fu
 3. An explicit private mapping converts selected staging rows into versioned `staged` normalized records.
    A separate read-only validator can measure Korean message join coverage without writing localized text or normalized records.
 4. The database package can compare two compatible private normalization runs without writing state, then atomically persist an explicitly accepted baseline after validated NAS backup evidence and an optimistic baseline check. **Not implemented:** the local admin exposes this workflow or records rejection and per-record decisions.
-5. **Not implemented:** a publisher generates a reviewed, allowlisted public snapshot with a preview or diff.
+5. The publisher can generate a deterministic, allowlisted public snapshot preview from the accepted baseline without writing files or changing review state. **Not implemented:** explicit file replacement, publication history and deployment controls.
 6. The public wiki reads only the validated static snapshot bundled with its build. The current file is prototype sample data and is not generated from the local database.
 
 ## Repository policy
@@ -47,6 +47,6 @@ The version 1 public prototype snapshot exposes four allowlisted collections: `c
 
 The prototype wiki routes each allowlisted collection through `/archive/[category]` and each record through `/archive/[category]/[slug]`. Unknown categories and missing public records render an explicit recovery message. These routes consume only the validated public snapshot and never query local staging or admin storage.
 
-The private `normalized_records` table is not a public DTO source yet. New records are staged; explicit run acceptance changes only the accepted run's records to `reviewed`. Publisher generation remains unimplemented, and the future publisher must construct public records from an allowlist rather than serialize private database rows directly.
+New private normalized records are staged; explicit run acceptance changes only the accepted run's records to `reviewed`. The publisher reads only the accepted baseline through a database repository and constructs public records from an allowlist. It hashes internal source identity into a public-safe revision and never serializes private provenance, backup metadata or internal run identifiers.
 
 The read-only diff engine pairs records by normalized category and source record ID, then compares only `id`, `slug`, and `nameKo`. It refuses cross-schema comparisons. The separate acceptance repository records immutable acceptance history, requires path-free NAS backup evidence, and advances one current baseline per schema version only when the caller's expected baseline still matches. See [`normalization-diff.md`](normalization-diff.md) and [`normalization-review.md`](normalization-review.md).

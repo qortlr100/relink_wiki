@@ -17,12 +17,18 @@ describe("recordIdSchema", () => {
 });
 
 describe("publicSnapshotSchema", () => {
+  const manifest = {
+    contentRevision: "a".repeat(64),
+    sourceRevision: "b".repeat(64),
+    extractor: { name: "GBFRDataTools", version: "2.0.0" },
+    recordCounts: { characters: 1, weapons: 0, sigils: 0, skills: 0 },
+  } as const;
+
   it("rejects unreviewed public records", () => {
     const result = publicSnapshotSchema.safeParse({
       schemaVersion: 1,
-      contentRevision: "1",
+      ...manifest,
       generatedAt: new Date().toISOString(),
-      sourceRevision: "abc",
       characters: [{ id: "1", slug: "gran", nameKo: "그랑", reviewState: "staged" }],
       weapons: [],
       sigils: [],
@@ -35,15 +41,29 @@ describe("publicSnapshotSchema", () => {
     const publishedRecord = { id: "1", slug: "gran", nameKo: "그랑", reviewState: "published" };
     const result = publicSnapshotSchema.safeParse({
       schemaVersion: 1,
-      contentRevision: "sample",
+      ...manifest,
       generatedAt: new Date().toISOString(),
-      sourceRevision: "abc",
       characters: [publishedRecord],
       weapons: [],
       sigils: [],
       skills: [],
     });
     expect(result.success).toBe(true);
+  });
+
+  it("rejects manifest counts that do not match the public collections", () => {
+    const result = publicSnapshotSchema.safeParse({
+      schemaVersion: 1,
+      ...manifest,
+      recordCounts: { ...manifest.recordCounts, characters: 2 },
+      generatedAt: new Date().toISOString(),
+      characters: [{ id: "1", slug: "gran", nameKo: "그랑", reviewState: "published" }],
+      weapons: [],
+      sigils: [],
+      skills: [],
+    });
+
+    expect(result.success).toBe(false);
   });
 
   it("validates a normalized record with complete private provenance", () => {

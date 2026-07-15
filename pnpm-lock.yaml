@@ -139,6 +139,18 @@ importers:
         specifier: 4.20.6
         version: 4.20.6
 
+  tools/publisher:
+    dependencies:
+      '@relink-wiki/database':
+        specifier: workspace:*
+        version: link:../../packages/database
+      '@relink-wiki/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+
 packages:
 
   '@emnapi/core@1.11.1':

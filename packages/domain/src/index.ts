@@ -176,16 +176,39 @@ export const publicCharacterSchema = characterSchema
   .pick({ id: true, slug: true, nameKo: true })
   .extend({ reviewState: z.literal("published") });
 export const publicRecordSchema = publicCharacterSchema;
-export const publicSnapshotSchema = z.object({
-  schemaVersion: z.literal(1),
-  contentRevision: z.string().min(1),
-  generatedAt: z.iso.datetime(),
-  sourceRevision: z.string().min(1),
-  characters: z.array(publicCharacterSchema),
-  weapons: z.array(publicRecordSchema),
-  sigils: z.array(publicRecordSchema),
-  skills: z.array(publicRecordSchema),
+export const publicSnapshotRecordCountsSchema = z.object({
+  characters: z.int().nonnegative(),
+  weapons: z.int().nonnegative(),
+  sigils: z.int().nonnegative(),
+  skills: z.int().nonnegative(),
 });
+export const publicSnapshotSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    contentRevision: z.string().regex(/^[0-9a-f]{64}$/),
+    generatedAt: z.iso.datetime(),
+    sourceRevision: z.string().regex(/^[0-9a-f]{64}$/),
+    extractor: z.object({
+      name: z.literal("GBFRDataTools"),
+      version: z.string().trim().min(1),
+    }),
+    recordCounts: publicSnapshotRecordCountsSchema,
+    characters: z.array(publicCharacterSchema),
+    weapons: z.array(publicRecordSchema),
+    sigils: z.array(publicRecordSchema),
+    skills: z.array(publicRecordSchema),
+  })
+  .superRefine((snapshot, context) => {
+    for (const category of ["characters", "weapons", "sigils", "skills"] as const) {
+      if (snapshot.recordCounts[category] !== snapshot[category].length) {
+        context.addIssue({
+          code: "custom",
+          path: ["recordCounts", category],
+          message: "레코드 건수가 공개 컬렉션과 일치하지 않습니다.",
+        });
+      }
+    }
+  });
 export type Character = z.infer<typeof characterSchema>;
 export type NormalizedRecord = z.infer<typeof normalizedRecordSchema>;
 export type NormalizationDiff = z.infer<typeof normalizationDiffSchema>;
