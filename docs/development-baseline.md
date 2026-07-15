@@ -60,8 +60,8 @@ Each stage has a separate input/output contract. The current repository status i
 | **extract**   | Partial     | Preflight and a documented read-only GBFRDataTools workflow exist; the repository does not invoke extraction yet.                                                     |
 | **import**    | Implemented | Imports four allowlisted candidate tables into private staging records with provenance and idempotency.                                                               |
 | **normalize** | Implemented | Maps explicitly selected staging rows into versioned `staged` normalized records; Korean display-name joins are reproducibly validated but not applied automatically. |
-| **diff**      | Partial     | A read-only engine compares two compatible private normalization runs; accepted-baseline selection and admin integration are not implemented.                         |
-| **review**    | Not started | Will record explicit operator decisions in the local-only surface.                                                                                                    |
+| **diff**      | Implemented | A read-only engine compares two compatible private normalization runs with deterministic, allowlisted results.                                                        |
+| **review**    | Partial     | Explicit run acceptance persists backup evidence, immutable history and one baseline per schema version; rejection, per-record review and admin integration remain.   |
 | **publish**   | Not started | Will generate allowlisted public DTOs and a versioned manifest after preview.                                                                                         |
 | **verify**    | Partial     | Domain and wiki loaders validate the prototype snapshot; generated-release verification is not built.                                                                 |
 
@@ -73,7 +73,7 @@ The first normalization increment accepts a private, explicitly curated mapping 
 
 The read-only localization validator establishes the current `chara.CharaName`, `weapon.Name`, `gem.Name`, and `ability.Unk5` joins against the extracted Korean message catalogs. It reports only coverage counts and keeps unresolved or empty-key rows out of automatic normalization. See [`localization-validation.md`](localization-validation.md).
 
-The read-only normalization diff pairs records by normalized category and source record ID, compares only the public candidate fields, reports deterministic status counts, and rejects cross-schema comparisons. It does not select or persist an accepted baseline and is not connected to the local admin yet. See [`normalization-diff.md`](normalization-diff.md).
+The read-only normalization diff pairs records by normalized category and source record ID, compares only the public candidate fields, reports deterministic status counts, and rejects cross-schema comparisons. A separate atomic acceptance contract requires verified, path-free NAS backup evidence, prevents stale baseline replacement, preserves prior acceptance history, and changes the accepted run's records from `staged` to `reviewed`. Neither contract is connected to the local admin yet. See [`normalization-diff.md`](normalization-diff.md) and [`normalization-review.md`](normalization-review.md).
 
 ## Public snapshot contract
 

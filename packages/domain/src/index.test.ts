@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  normalizationAcceptanceSchema,
   normalizationDiffSchema,
   normalizedRecordSchema,
   publicSnapshotSchema,
@@ -119,5 +120,35 @@ describe("normalizationDiffSchema", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+});
+
+describe("normalizationAcceptanceSchema", () => {
+  it("requires path-free backup evidence created before acceptance", () => {
+    const acceptance = {
+      normalizationRunId: "7b6eb5c2-17bb-4c24-b4b0-701b080cd29b",
+      schemaVersion: 1,
+      acceptedAt: "2026-07-15T02:10:00.000Z",
+      previousBaselineNormalizationRunId: null,
+      backup: {
+        reference: "NAS-20260715T020000Z",
+        createdAt: "2026-07-15T02:00:00.000Z",
+        sha256: "a".repeat(64),
+      },
+    };
+
+    expect(normalizationAcceptanceSchema.safeParse(acceptance).success).toBe(true);
+    expect(
+      normalizationAcceptanceSchema.safeParse({
+        ...acceptance,
+        backup: { ...acceptance.backup, reference: "//nas/private/database.sqlite" },
+      }).success,
+    ).toBe(false);
+    expect(
+      normalizationAcceptanceSchema.safeParse({
+        ...acceptance,
+        backup: { ...acceptance.backup, createdAt: "2026-07-15T03:00:00.000Z" },
+      }).success,
+    ).toBe(false);
   });
 });
