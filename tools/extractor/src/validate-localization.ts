@@ -25,28 +25,32 @@ const sourceMessageKeySchema = z.object({
   messageKey: z.union([z.string(), z.null()]),
 });
 
-const joinContracts = [
+export const localizationJoinContracts = [
   {
     category: "character",
     sourceTable: "chara",
+    sourceIdentifierColumn: "CharId",
     sourceColumn: "CharaName",
     messageFile: "text_chara.msg",
   },
   {
     category: "weapon",
     sourceTable: "weapon",
+    sourceIdentifierColumn: "Key",
     sourceColumn: "Name",
     messageFile: "text.msg",
   },
   {
     category: "sigil",
     sourceTable: "gem",
+    sourceIdentifierColumn: "Key",
     sourceColumn: "Name",
     messageFile: "text.msg",
   },
   {
     category: "skill",
     sourceTable: "ability",
+    sourceIdentifierColumn: "Key",
     sourceColumn: "Unk5",
     messageFile: "text.msg",
   },
@@ -65,7 +69,10 @@ export interface LocalizationCategoryResult {
 }
 
 export interface LocalizationValidationResult {
-  categories: Record<(typeof joinContracts)[number]["category"], LocalizationCategoryResult>;
+  categories: Record<
+    (typeof localizationJoinContracts)[number]["category"],
+    LocalizationCategoryResult
+  >;
   readyForAutomaticNormalization: boolean;
 }
 
@@ -91,7 +98,7 @@ export function readLocalizationValidationConfig(
   });
 }
 
-function readMessageCatalog(messagePath: string): Map<string, string> {
+export function readMessageCatalog(messagePath: string): Map<string, string> {
   let decodedMessage: unknown;
 
   try {
@@ -145,7 +152,7 @@ function openCandidateDatabase(path: string): Database.Database {
 
 function readMessageKeys(
   sqlite: Database.Database,
-  contract: (typeof joinContracts)[number],
+  contract: (typeof localizationJoinContracts)[number],
 ): (string | null)[] {
   let rows: unknown[];
 
@@ -177,7 +184,9 @@ function readMessageKeys(
 export function validateLocalizationJoins(input: unknown): LocalizationValidationResult {
   const config = localizationValidationConfigSchema.parse(input);
   const catalogs = new Map<string, Map<string, string>>();
-  for (const messageFile of new Set(joinContracts.map((contract) => contract.messageFile))) {
+  for (const messageFile of new Set(
+    localizationJoinContracts.map((contract) => contract.messageFile),
+  )) {
     catalogs.set(
       messageFile,
       readMessageCatalog(join(config.koreanMessageDirectoryPath, messageFile)),
@@ -186,7 +195,7 @@ export function validateLocalizationJoins(input: unknown): LocalizationValidatio
 
   const sqlite = openCandidateDatabase(config.candidateDatabasePath);
   try {
-    const categoryEntries = joinContracts.map((contract) => {
+    const categoryEntries = localizationJoinContracts.map((contract) => {
       const messageKeys = readMessageKeys(sqlite, contract);
       const eligibleKeys = messageKeys.flatMap((messageKey) => {
         if (messageKey === null) {

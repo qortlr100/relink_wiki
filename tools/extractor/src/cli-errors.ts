@@ -1,6 +1,7 @@
 import { DatabaseMigrationError, NormalizationError } from "@relink-wiki/database";
 import { ZodError } from "zod";
 import { CandidateImportError } from "./import-candidate";
+import { MappingCandidateError } from "./generate-mapping-candidate";
 import { NormalizationMappingError } from "./normalize-mapped";
 import { LocalizationValidationError } from "./validate-localization";
 
@@ -38,6 +39,7 @@ function hasSqliteBusyCode(error: unknown): boolean {
 export function classifyCliFailure(error: unknown): CliFailure {
   if (
     error instanceof CandidateImportError ||
+    error instanceof MappingCandidateError ||
     error instanceof DatabaseMigrationError ||
     error instanceof NormalizationError ||
     error instanceof NormalizationMappingError ||
