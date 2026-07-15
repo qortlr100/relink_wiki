@@ -24,7 +24,11 @@ function createConnection() {
   return connection;
 }
 
-function createRun(connection: ReturnType<typeof openDatabase>, normalizedAt: string) {
+function createRun(
+  connection: ReturnType<typeof openDatabase>,
+  normalizedAt: string,
+  schemaVersion = 1,
+) {
   const importRunId = randomUUID();
   const normalizationRunId = randomUUID();
   const records = [
@@ -38,7 +42,7 @@ function createRun(connection: ReturnType<typeof openDatabase>, normalizedAt: st
     inputFingerprint: randomUUID().replaceAll("-", "").padEnd(64, "0"),
     extractorVersion: "2.0.0",
     importedAt: "2026-07-15T00:00:00.000Z",
-    schemaVersion: 1,
+    schemaVersion,
     records: records.map((record, index) => ({
       sourceTable: record.sourceTable,
       sourceFileId: `private/${record.sourceTable}.tbl`,
@@ -52,7 +56,7 @@ function createRun(connection: ReturnType<typeof openDatabase>, normalizedAt: st
     normalizationRunId,
     importRunId,
     normalizedAt,
-    schemaVersion: 1,
+    schemaVersion,
     records: records.map((record, index) => ({
       sourceTable: record.sourceTable,
       sourceRecordId: String(index + 1),
@@ -96,6 +100,38 @@ describe("review dashboard repository", () => {
     expect(JSON.stringify(dashboard)).not.toContain("private/");
     expect(JSON.stringify(dashboard)).not.toContain("secret");
     expect(JSON.stringify(dashboard)).not.toContain(acceptedRunId);
+  });
+
+  it("keeps the current baseline aligned with the supported publication schema", () => {
+    const connection = createConnection();
+    const versionOneRunId = createRun(connection, "2026-07-15T01:00:00.000Z");
+    acceptNormalizationRun(connection.db, {
+      normalizationRunId: versionOneRunId,
+      acceptedAt: "2026-07-15T02:00:00.000Z",
+      expectedBaselineNormalizationRunId: null,
+      backup: {
+        reference: "NAS-V1",
+        createdAt: "2026-07-15T01:50:00.000Z",
+        sha256: "a".repeat(64),
+      },
+    });
+    const versionTwoRunId = createRun(connection, "2026-07-15T03:00:00.000Z", 2);
+    acceptNormalizationRun(connection.db, {
+      normalizationRunId: versionTwoRunId,
+      acceptedAt: "2026-07-15T04:00:00.000Z",
+      expectedBaselineNormalizationRunId: null,
+      backup: {
+        reference: "NAS-V2",
+        createdAt: "2026-07-15T03:50:00.000Z",
+        sha256: "b".repeat(64),
+      },
+    });
+
+    expect(getReviewDashboard(connection.db).currentBaseline).toMatchObject({
+      schemaVersion: 1,
+      acceptedAt: "2026-07-15T02:00:00.000Z",
+      backup: { reference: "NAS-V1" },
+    });
   });
 
   it("reports the current publication revision and category counts", () => {

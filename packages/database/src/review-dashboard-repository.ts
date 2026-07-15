@@ -124,9 +124,7 @@ export function getReviewDashboard(db: RelinkDatabase): ReviewDashboard {
         }),
       }))
       .reverse();
-    const currentBaselineRow = [...baselines].sort((left, right) =>
-      right.acceptedAt.localeCompare(left.acceptedAt),
-    )[0];
+    const currentBaselineRow = baselines.find((baseline) => baseline.schemaVersion === 1);
     const currentBaseline = currentBaselineRow
       ? {
           schemaVersion: currentBaselineRow.schemaVersion,
