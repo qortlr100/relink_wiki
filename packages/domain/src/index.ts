@@ -209,6 +209,40 @@ export const publicSnapshotSchema = z
       }
     }
   });
+export const publicSnapshotPublicationSchema = z
+  .object({
+    id: z.uuid(),
+    normalizationRunId: z.uuid(),
+    schemaVersion: z.literal(1),
+    publishedAt: z.iso.datetime(),
+    snapshotGeneratedAt: z.iso.datetime(),
+    contentRevision: z.string().regex(/^[0-9a-f]{64}$/),
+    sourceRevision: z.string().regex(/^[0-9a-f]{64}$/),
+    outputSha256: z.string().regex(/^[0-9a-f]{64}$/),
+    recordCount: z.int().positive(),
+    previousContentRevision: z
+      .string()
+      .regex(/^[0-9a-f]{64}$/)
+      .nullable(),
+    backup: backupReceiptSchema,
+  })
+  .strict()
+  .superRefine((publication, context) => {
+    if (Date.parse(publication.snapshotGeneratedAt) > Date.parse(publication.publishedAt)) {
+      context.addIssue({
+        code: "custom",
+        path: ["snapshotGeneratedAt"],
+        message: "스냅샷은 발행 시각 이후에 생성될 수 없습니다.",
+      });
+    }
+    if (Date.parse(publication.backup.createdAt) > Date.parse(publication.publishedAt)) {
+      context.addIssue({
+        code: "custom",
+        path: ["backup", "createdAt"],
+        message: "백업은 발행 이전에 완료되어야 합니다.",
+      });
+    }
+  });
 export type Character = z.infer<typeof characterSchema>;
 export type NormalizedRecord = z.infer<typeof normalizedRecordSchema>;
 export type NormalizationDiff = z.infer<typeof normalizationDiffSchema>;
@@ -218,3 +252,4 @@ export type NormalizationAcceptance = z.infer<typeof normalizationAcceptanceSche
 export type AcceptedNormalizationBaseline = z.infer<typeof acceptedNormalizationBaselineSchema>;
 export type PublicRecord = z.infer<typeof publicRecordSchema>;
 export type PublicSnapshot = z.infer<typeof publicSnapshotSchema>;
+export type PublicSnapshotPublication = z.infer<typeof publicSnapshotPublicationSchema>;

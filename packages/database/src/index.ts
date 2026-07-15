@@ -5,6 +5,7 @@ export * from "./normalization-diff-repository";
 export * from "./normalization-repository";
 export * from "./normalization-review-repository";
 export * from "./publication-repository";
+export * from "./publication-history-repository";
 export * from "./schema";
 export * from "./staging-import-repository";
 

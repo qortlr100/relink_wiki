@@ -18,6 +18,10 @@ const migrations = [
       new URL("../migrations/0002_normalization_acceptance.sql", import.meta.url),
     ),
   },
+  {
+    id: "0003_publication_history",
+    path: fileURLToPath(new URL("../migrations/0003_publication_history.sql", import.meta.url)),
+  },
 ] as const;
 
 export class DatabaseMigrationError extends Error {
