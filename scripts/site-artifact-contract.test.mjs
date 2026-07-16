@@ -146,6 +146,27 @@ describe("Sites artifact contract", () => {
     );
   });
 
+  it("derives artifact markers from non-public workspace packages", async () => {
+    const repositoryRoot = await createArtifactDirectory();
+    await mkdir(join(repositoryRoot, "apps", "wiki"), { recursive: true });
+    await mkdir(join(repositoryRoot, "tools", "extractor"), { recursive: true });
+    await writeFile(
+      join(repositoryRoot, "apps", "wiki", "package.json"),
+      JSON.stringify({ name: "@relink-wiki/wiki" }),
+    );
+    await writeFile(
+      join(repositoryRoot, "tools", "extractor", "package.json"),
+      JSON.stringify({ name: "@relink-wiki/extractor" }),
+    );
+    const markers = await assertWorkspaceDependencyBoundary(repositoryRoot);
+    const artifactDirectory = await createArtifactDirectory();
+    await writeFile(join(artifactDirectory, "worker.js.map"), "tools/extractor/src/private.ts");
+
+    await expect(assertPublicBoundary(artifactDirectory, markers)).rejects.toThrow(
+      "Private marker found in Sites artifact: tools/extractor",
+    );
+  });
+
   it.skipIf(globalThis.process.platform === "win32")("rejects symbolic links", async () => {
     const artifactDirectory = await createArtifactDirectory();
     const targetPath = join(artifactDirectory, "target.txt");
