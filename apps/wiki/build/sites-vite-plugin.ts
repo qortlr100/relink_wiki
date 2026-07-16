@@ -1,5 +1,5 @@
 import { access, cp, mkdir, rm } from "node:fs/promises";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import type { Plugin } from "vite";
 
 async function exists(path: string): Promise<boolean> {
@@ -14,13 +14,26 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
+async function findHostingConfig(startDirectory: string): Promise<string> {
+  let currentDirectory = resolve(startDirectory);
+
+  for (;;) {
+    const candidate = resolve(currentDirectory, ".openai", "hosting.json");
+    if (await exists(candidate)) {
+      return candidate;
+    }
+
+    const parentDirectory = dirname(currentDirectory);
+    if (parentDirectory === currentDirectory) {
+      throw new Error(`Missing .openai/hosting.json at or above Vite root: ${startDirectory}`);
+    }
+    currentDirectory = parentDirectory;
+  }
+}
+
 async function copyHostingConfig(root: string): Promise<void> {
   const outputDirectory = resolve(root, "dist", ".openai");
-  const hostingConfig = resolve(root, "..", "..", ".openai", "hosting.json");
-
-  if (!(await exists(hostingConfig))) {
-    throw new Error("Missing root .openai/hosting.json");
-  }
+  const hostingConfig = await findHostingConfig(root);
 
   await rm(outputDirectory, { recursive: true, force: true });
   await mkdir(outputDirectory, { recursive: true });
