@@ -1,7 +1,7 @@
 import { createReadStream } from "node:fs";
 import { Buffer } from "node:buffer";
 import { readFile, readdir, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import typescript from "typescript";
 
 const privateMarkers = [
@@ -13,6 +13,13 @@ const privateMarkers = [
 const hostingManifestKeys = new Set(["d1", "project_id", "r2"]);
 const publicWorkspacePackages = new Set(["@relink-wiki/wiki", "@relink-wiki/domain"]);
 const workspaceScopes = ["apps", "packages", "tools"];
+const ignoredSourceDirectories = new Set([
+  ".vinext",
+  ".wrangler",
+  ".sites-runtime",
+  "dist",
+  "node_modules",
+]);
 const dependencySections = [
   "dependencies",
   "devDependencies",
@@ -138,6 +145,10 @@ function isWorkerObject(expression, variables, visited) {
     const name = getPropertyName(property.name);
     if (name !== "fetch") return false;
     if (typescript.isMethodDeclaration(property)) return true;
+    if (typescript.isShorthandPropertyAssignment(property)) {
+      const initializer = variables.get(property.name.text);
+      return initializer ? isFunctionValue(initializer, variables, new Set()) : false;
+    }
     if (!typescript.isPropertyAssignment(property)) return false;
     return isFunctionValue(property.initializer, variables, new Set());
   });
@@ -179,6 +190,7 @@ export async function assertWorkspaceDependencyBoundary(
   entryPackageName = "@relink-wiki/wiki",
 ) {
   const manifests = /** @type {Map<string, Record<string, unknown>>} */ (new Map());
+  const manifestDirectories = /** @type {Map<string, string>} */ (new Map());
 
   for (const scope of workspaceScopes) {
     const scopePath = join(repositoryRoot, scope);
@@ -197,7 +209,10 @@ export async function assertWorkspaceDependencyBoundary(
         const value = parseJson(await readFile(manifestPath, "utf8"));
         if (typeof value !== "object" || value === null || Array.isArray(value)) continue;
         const manifest = /** @type {Record<string, unknown>} */ (value);
-        if (typeof manifest.name === "string") manifests.set(manifest.name, manifest);
+        if (typeof manifest.name === "string") {
+          manifests.set(manifest.name, manifest);
+          manifestDirectories.set(manifest.name, join(scopePath, entry.name));
+        }
       } catch (error) {
         if (error instanceof Error && "code" in error && error.code === "ENOENT") continue;
         throw error;
@@ -208,6 +223,10 @@ export async function assertWorkspaceDependencyBoundary(
   if (!manifests.has(entryPackageName)) {
     throw new Error(`Workspace package not found: ${entryPackageName}`);
   }
+  const entryDirectory = manifestDirectories.get(entryPackageName);
+  if (!entryDirectory)
+    throw new Error(`Workspace package directory not found: ${entryPackageName}`);
+  await assertRelativeSourceBoundary(entryDirectory);
 
   const pending = /** @type {Array<[string, string[]]>} */ ([
     [entryPackageName, [entryPackageName]],
@@ -238,6 +257,71 @@ export async function assertWorkspaceDependencyBoundary(
       }
     }
   }
+}
+
+/**
+ * @param {string} packageDirectory
+ * @param {string} [currentDirectory]
+ */
+async function assertRelativeSourceBoundary(packageDirectory, currentDirectory = packageDirectory) {
+  for (const entry of await readdir(currentDirectory, { withFileTypes: true })) {
+    if (ignoredSourceDirectories.has(entry.name)) continue;
+    const entryPath = join(currentDirectory, entry.name);
+    if (entry.isSymbolicLink()) {
+      throw new Error(`Symbolic links are not allowed in the public wiki source: ${entryPath}`);
+    }
+    if (entry.isDirectory()) {
+      await assertRelativeSourceBoundary(packageDirectory, entryPath);
+      continue;
+    }
+    if (!entry.isFile() || !/\.(?:[cm]?[jt]sx?)$/u.test(entry.name)) continue;
+
+    const source = await readFile(entryPath, "utf8");
+    const sourceFile = typescript.createSourceFile(
+      entryPath,
+      source,
+      typescript.ScriptTarget.Latest,
+      true,
+      entry.name.endsWith("x") ? typescript.ScriptKind.TSX : typescript.ScriptKind.TS,
+    );
+    /** @param {import("typescript").Node} node */
+    const inspectNode = (node) => {
+      const specifier = getModuleSpecifier(node);
+      if (specifier?.startsWith(".")) {
+        const targetPath = resolve(dirname(entryPath), specifier);
+        const pathFromPackage = relative(packageDirectory, targetPath);
+        if (pathFromPackage.startsWith("..") || isAbsolute(pathFromPackage)) {
+          throw new Error(
+            `Public wiki source import escapes apps/wiki: ${entryPath} -> ${specifier}`,
+          );
+        }
+      }
+      typescript.forEachChild(node, inspectNode);
+    };
+    inspectNode(sourceFile);
+  }
+}
+
+/** @param {import("typescript").Node} node */
+function getModuleSpecifier(node) {
+  if (
+    (typescript.isImportDeclaration(node) || typescript.isExportDeclaration(node)) &&
+    node.moduleSpecifier &&
+    typescript.isStringLiteral(node.moduleSpecifier)
+  ) {
+    return node.moduleSpecifier.text;
+  }
+  if (!typescript.isCallExpression(node) || node.arguments.length !== 1) return undefined;
+  const argument = node.arguments[0];
+  if (
+    argument &&
+    typescript.isStringLiteral(argument) &&
+    (node.expression.kind === typescript.SyntaxKind.ImportKeyword ||
+      (typescript.isIdentifier(node.expression) && node.expression.text === "require"))
+  ) {
+    return argument.text;
+  }
+  return undefined;
 }
 
 /**
