@@ -14,18 +14,20 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
-async function findHostingConfig(startDirectory: string): Promise<string> {
+async function findRepositoryRoot(startDirectory: string): Promise<string> {
   let currentDirectory = resolve(startDirectory);
 
   for (;;) {
-    const candidate = resolve(currentDirectory, ".openai", "hosting.json");
-    if (await exists(candidate)) {
-      return candidate;
+    if (await exists(resolve(currentDirectory, ".git"))) {
+      if (!(await exists(resolve(currentDirectory, "pnpm-workspace.yaml")))) {
+        throw new Error(`Git root is not the Relink Wiki workspace: ${currentDirectory}`);
+      }
+      return currentDirectory;
     }
 
     const parentDirectory = dirname(currentDirectory);
     if (parentDirectory === currentDirectory) {
-      throw new Error(`Missing .openai/hosting.json at or above Vite root: ${startDirectory}`);
+      throw new Error(`Unable to find the Git repository root from Vite root: ${startDirectory}`);
     }
     currentDirectory = parentDirectory;
   }
@@ -33,7 +35,12 @@ async function findHostingConfig(startDirectory: string): Promise<string> {
 
 async function copyHostingConfig(root: string): Promise<void> {
   const outputDirectory = resolve(root, "dist", ".openai");
-  const hostingConfig = await findHostingConfig(root);
+  const repositoryRoot = await findRepositoryRoot(root);
+  const hostingConfig = resolve(repositoryRoot, ".openai", "hosting.json");
+
+  if (!(await exists(hostingConfig))) {
+    throw new Error(`Missing .openai/hosting.json at repository root: ${repositoryRoot}`);
+  }
 
   await rm(outputDirectory, { recursive: true, force: true });
   await mkdir(outputDirectory, { recursive: true });
