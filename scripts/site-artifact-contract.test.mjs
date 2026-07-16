@@ -6,6 +6,8 @@ import {
   assertHostingManifest,
   assertPublicBoundary,
   assertRequiredArtifactPaths,
+  assertWorkerModuleSource,
+  assertWorkspaceDependencyBoundary,
 } from "./site-artifact-contract.mjs";
 
 const temporaryDirectories = /** @type {string[]} */ ([]);
@@ -25,10 +27,14 @@ async function createArtifactDirectory() {
 }
 
 describe("Sites artifact contract", () => {
-  it("accepts the required client directory and public snapshot", async () => {
+  it("accepts the complete required artifact layout", async () => {
     const artifactDirectory = await createArtifactDirectory();
     await mkdir(join(artifactDirectory, "client", "data"), { recursive: true });
+    await mkdir(join(artifactDirectory, "server"), { recursive: true });
+    await mkdir(join(artifactDirectory, ".openai"), { recursive: true });
     await writeFile(join(artifactDirectory, "client", "data", "public-snapshot.v1.json"), "{}");
+    await writeFile(join(artifactDirectory, "server", "index.js"), "export default { fetch() {} }");
+    await writeFile(join(artifactDirectory, ".openai", "hosting.json"), "{}");
 
     await expect(assertRequiredArtifactPaths(artifactDirectory)).resolves.toBeUndefined();
   });
@@ -47,6 +53,54 @@ describe("Sites artifact contract", () => {
 
     await expect(assertPublicBoundary(artifactDirectory)).rejects.toThrow(
       "Private marker found in Sites artifact: apps/mining-admin",
+    );
+  });
+
+  it("detects private markers split across stream chunks", async () => {
+    const artifactDirectory = await createArtifactDirectory();
+    await writeFile(
+      join(artifactDirectory, "large.bin"),
+      `${"x".repeat(65_530)}apps/mining-admin/private.ts`,
+    );
+
+    await expect(assertPublicBoundary(artifactDirectory)).rejects.toThrow(
+      "Private marker found in Sites artifact: apps/mining-admin",
+    );
+  });
+
+  it("validates the Worker shape without executing it", async () => {
+    const artifactDirectory = await createArtifactDirectory();
+    const workerPath = join(artifactDirectory, "worker.js");
+    await writeFile(
+      workerPath,
+      "throw new Error('must not execute'); const worker = { fetch() {} }; export { worker as default };",
+    );
+
+    await expect(assertWorkerModuleSource(workerPath)).resolves.toBeUndefined();
+    await writeFile(workerPath, "export const worker = { fetch() {} };");
+    await expect(assertWorkerModuleSource(workerPath)).rejects.toThrow("statically export");
+  });
+
+  it("rejects indirect private workspace dependencies", async () => {
+    const repositoryRoot = await createArtifactDirectory();
+    const workspaceManifests = /** @type {Array<[string, Record<string, unknown>]>} */ ([
+      [
+        "apps/wiki",
+        { name: "@relink-wiki/wiki", dependencies: { "@relink-wiki/domain": "workspace:*" } },
+      ],
+      [
+        "packages/domain",
+        { name: "@relink-wiki/domain", dependencies: { "@relink-wiki/database": "workspace:*" } },
+      ],
+      ["packages/database", { name: "@relink-wiki/database" }],
+    ]);
+    for (const [path, manifest] of workspaceManifests) {
+      await mkdir(join(repositoryRoot, path), { recursive: true });
+      await writeFile(join(repositoryRoot, path, "package.json"), JSON.stringify(manifest));
+    }
+
+    await expect(assertWorkspaceDependencyBoundary(repositoryRoot)).rejects.toThrow(
+      "@relink-wiki/wiki -> @relink-wiki/domain -> @relink-wiki/database",
     );
   });
 
