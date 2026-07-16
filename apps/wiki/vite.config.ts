@@ -20,9 +20,13 @@ export default defineConfig(async () => {
 
   return {
     server: {
-      host: "0.0.0.0",
-      allowedHosts: ["terminal.local"],
-      ...(isCodexSeatbeltSandbox ? { watch: { useFsEvents: false, usePolling: true } } : {}),
+      ...(isCodexSeatbeltSandbox
+        ? {
+            host: "0.0.0.0",
+            allowedHosts: ["terminal.local"],
+            watch: { useFsEvents: false, usePolling: true },
+          }
+        : {}),
     },
     plugins: [
       vinext(),
