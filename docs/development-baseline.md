@@ -87,7 +87,7 @@ The publisher preview reads only the accepted schema-version baseline, requires 
 
 ## Sites deployment contract
 
-The repository-root `build` keeps the complete workspace build and then copies only the `apps/wiki` Sites Worker, static assets, and hosting manifest into the root `dist/` artifact. The packaging gate imports the emitted Worker to require `default.fetch`, parses the hosting manifest, and scans emitted text assets for known mining-admin, SQLite, and local-path markers. The checked-in sample snapshot may be used for a private deployment-path checkpoint, but it must not be described as the actual game-data release. See [`sites-deployment.md`](sites-deployment.md).
+The repository-root `build` keeps the complete workspace build and then copies only the `apps/wiki` Sites Worker, static assets, and hosting manifest into the root `dist/` artifact. The packaging gate parses the hosting manifest, scans every emitted file for known mining-admin, SQLite, and local-path markers, and only then imports the emitted Worker to require `default.fetch`. The checked-in sample snapshot may be used for a private deployment-path checkpoint, but it must not be described as the actual game-data release. See [`sites-deployment.md`](sites-deployment.md).
 
 The project does not maintain a normal game-version history because it targets the expected final content state. If a development-time game transition changes extraction or normalized semantics, record a one-off compatibility label on that import rather than introducing a permanent version catalog.
 
