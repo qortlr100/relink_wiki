@@ -16,7 +16,7 @@ const privateMarkers = [
 await rm(targetDirectory, { recursive: true, force: true });
 await cp(sourceDirectory, targetDirectory, { recursive: true });
 
-JSON.parse(await readFile(hostingUrl, "utf8"));
+assertHostingManifest(JSON.parse(await readFile(hostingUrl, "utf8")));
 await assertPublicBoundary(fileURLToPath(targetDirectory));
 
 const workerImportUrl = new URL(workerUrl.href);
@@ -44,6 +44,19 @@ function isWorkerModule(value) {
     "fetch" in value.default &&
     typeof value.default.fetch === "function"
   );
+}
+
+/** @param {unknown} value */
+function assertHostingManifest(value) {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    !("project_id" in value) ||
+    typeof value.project_id !== "string" ||
+    value.project_id.trim().length === 0
+  ) {
+    throw new Error("Sites artifact hosting.json is missing project_id");
+  }
 }
 
 /** @param {string} directoryPath */
