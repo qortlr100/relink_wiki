@@ -44,7 +44,6 @@ const privateMarkers = [
   "apps/mining-admin",
   "review-dashboard-repository",
 ];
-const textExtensions = new Set([".html", ".js", ".json", ".mjs", ".txt"]);
 
 /** @param {URL} directoryUrl */
 async function assertPublicBoundary(directoryUrl) {
@@ -55,12 +54,7 @@ async function assertPublicBoundary(directoryUrl) {
       continue;
     }
 
-    const extension = entry.name.slice(entry.name.lastIndexOf("."));
-    if (!textExtensions.has(extension)) {
-      continue;
-    }
-
-    const content = await readFile(entryUrl, "utf8");
+    const content = await readFile(entryUrl);
     const marker = privateMarkers.find((candidate) => content.includes(candidate));
     if (marker) {
       throw new Error(`Private marker found in Sites artifact: ${marker}`);
