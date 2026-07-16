@@ -1,0 +1,31 @@
+{
+  "name": "relink-wiki",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.15.1",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "node apps/wiki/node_modules/vite/bin/vite.js apps/wiki",
+    "dev:wiki": "pnpm --filter @relink-wiki/wiki dev",
+    "dev:admin": "pnpm --filter @relink-wiki/mining-admin dev",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "typecheck": "pnpm -r typecheck && tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "build": "pnpm -r build && pnpm site:package",
+    "site:package": "node scripts/package-site-artifact.mjs",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "26.1.1",
+    "eslint": "10.7.0",
+    "prettier": "3.9.5",
+    "typescript": "6.0.2",
+    "typescript-eslint": "8.64.0",
+    "vitest": "4.1.10"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "contentRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "generatedAt": "2026-07-14T00:00:00.000Z",
+  "sourceRevision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "extractor": { "name": "GBFRDataTools", "version": "2.0.0-sample" },
+  "recordCounts": { "characters": 2, "weapons": 1, "sigils": 1, "skills": 1 },
+  "characters": [
+    { "id": "character-gran", "slug": "gran", "nameKo": "그랑", "reviewState": "published" },
+    { "id": "character-djeeta", "slug": "djeeta", "nameKo": "지타", "reviewState": "published" }
+  ],
+  "weapons": [
+    {
+      "id": "weapon-sword",
+      "slug": "traveler-sword",
+      "nameKo": "여행자의 검",
+      "reviewState": "published"
+    }
+  ],
+  "sigils": [
+    { "id": "sigil-attack", "slug": "attack-power", "nameKo": "공격력", "reviewState": "published" }
+  ],
+  "skills": [
+    {
+      "id": "skill-reginleiv",
+      "slug": "reginleiv",
+      "nameKo": "레긴레이브",
+      "reviewState": "published"
+    }
+  ]
+}

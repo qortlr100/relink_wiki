@@ -1,0 +1,28 @@
+{
+  "name": "@relink-wiki/extractor",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "relink-extractor": "./src/cli.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "mapping:candidate": "tsx src/cli.ts generate-mapping-candidate",
+    "import:candidate": "tsx src/cli.ts import-candidate",
+    "localization:validate": "tsx src/cli.ts validate-localization",
+    "normalize:mapped": "tsx src/cli.ts normalize-mapped",
+    "preflight": "tsx src/cli.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@msgpack/msgpack": "3.1.2",
+    "@relink-wiki/database": "workspace:*",
+    "better-sqlite3": "12.11.1",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "7.6.13",
+    "tsx": "4.20.6"
+  }
+}

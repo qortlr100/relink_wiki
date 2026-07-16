@@ -1,0 +1,7 @@
+.vinext
+.next
+dist
+node_modules
+pnpm-lock.yaml
+.sites-runtime
+.wrangler
