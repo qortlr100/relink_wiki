@@ -12,7 +12,6 @@ const privateMarkers = [
 ];
 const hostingManifestKeys = new Set(["d1", "project_id", "r2"]);
 const publicWorkspacePackages = new Set(["@relink-wiki/wiki", "@relink-wiki/domain"]);
-const workspaceScopes = ["apps", "packages", "tools"];
 const ignoredSourceDirectories = new Set([
   ".vinext",
   ".wrangler",
@@ -192,6 +191,7 @@ export async function assertWorkspaceDependencyBoundary(
 ) {
   const manifests = /** @type {Map<string, Record<string, unknown>>} */ (new Map());
   const manifestDirectories = /** @type {Map<string, string>} */ (new Map());
+  const workspaceScopes = await readWorkspaceScopes(repositoryRoot);
 
   for (const scope of workspaceScopes) {
     const scopePath = join(repositoryRoot, scope);
@@ -224,11 +224,6 @@ export async function assertWorkspaceDependencyBoundary(
   if (!manifests.has(entryPackageName)) {
     throw new Error(`Workspace package not found: ${entryPackageName}`);
   }
-  const entryDirectory = manifestDirectories.get(entryPackageName);
-  if (!entryDirectory)
-    throw new Error(`Workspace package directory not found: ${entryPackageName}`);
-  await assertRelativeSourceBoundary(entryDirectory);
-
   const pending = /** @type {Array<[string, string[]]>} */ ([
     [entryPackageName, [entryPackageName]],
   ]);
@@ -245,6 +240,9 @@ export async function assertWorkspaceDependencyBoundary(
         `Non-public workspace dependency is reachable from the public wiki: ${dependencyPath.join(" -> ")}`,
       );
     }
+    const packageDirectory = manifestDirectories.get(packageName);
+    if (!packageDirectory) throw new Error(`Workspace package directory not found: ${packageName}`);
+    await assertRelativeSourceBoundary(packageDirectory);
 
     const manifest = manifests.get(packageName);
     for (const section of dependencySections) {
@@ -268,6 +266,29 @@ export async function assertWorkspaceDependencyBoundary(
         : undefined;
       return packagePath ? [packageName, packagePath] : [packageName];
     });
+}
+
+/** @param {string} repositoryRoot */
+async function readWorkspaceScopes(repositoryRoot) {
+  const workspacePath = join(repositoryRoot, "pnpm-workspace.yaml");
+  const source = await readFile(workspacePath, "utf8");
+  const lines = source.split(/\r?\n/u);
+  const packagesLine = lines.findIndex((line) => /^packages:\s*(?:#.*)?$/u.test(line));
+  if (packagesLine === -1) throw new Error("pnpm-workspace.yaml is missing packages");
+
+  const scopes = [];
+  for (const line of lines.slice(packagesLine + 1)) {
+    if (/^\S[^:]*:/u.test(line)) break;
+    if (/^\s*(?:#.*)?$/u.test(line)) continue;
+    const item = /^\s+-\s+(?:"([^"]+)"|'([^']+)'|([^\s#]+))\s*(?:#.*)?$/u.exec(line);
+    if (!item) throw new Error(`Unsupported pnpm workspace package entry: ${line.trim()}`);
+    const pattern = item[1] ?? item[2] ?? item[3];
+    const scope = pattern ? /^([^/*]+)\/\*$/u.exec(pattern)?.[1] : undefined;
+    if (!scope) throw new Error(`Unsupported pnpm workspace package pattern: ${String(pattern)}`);
+    scopes.push(scope);
+  }
+  if (scopes.length === 0) throw new Error("pnpm-workspace.yaml has no package scopes");
+  return scopes;
 }
 
 /**
@@ -303,7 +324,7 @@ async function assertRelativeSourceBoundary(packageDirectory, currentDirectory =
         const pathFromPackage = relative(packageDirectory, targetPath);
         if (pathFromPackage.startsWith("..") || isAbsolute(pathFromPackage)) {
           throw new Error(
-            `Public wiki source import escapes apps/wiki: ${entryPath} -> ${specifier}`,
+            `Public workspace source import escapes package boundary: ${entryPath} -> ${specifier}`,
           );
         }
       }
@@ -326,7 +347,8 @@ function getModuleSpecifier(node) {
   const argument = node.arguments[0];
   if (
     argument &&
-    typescript.isStringLiteral(argument) &&
+    (typescript.isStringLiteral(argument) ||
+      typescript.isNoSubstitutionTemplateLiteral(argument)) &&
     (node.expression.kind === typescript.SyntaxKind.ImportKeyword ||
       (typescript.isIdentifier(node.expression) && node.expression.text === "require"))
   ) {
