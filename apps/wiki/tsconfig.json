@@ -1,6 +1,14 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": { "jsx": "preserve", "incremental": true, "plugins": [{ "name": "next" }] },
-  "include": ["next-env.d.ts", "app/**/*.ts", "app/**/*.tsx", ".vinext/types/**/*.ts"],
+  "include": [
+    "next-env.d.ts",
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "build/**/*.ts",
+    "worker/**/*.ts",
+    "vite.config.ts",
+    ".vinext/types/**/*.ts"
+  ],
   "exclude": ["node_modules"]
 }

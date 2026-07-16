@@ -55,15 +55,15 @@ The currently validated extraction baseline pins GBFRDataTools `2.0.0` and requi
 
 Each stage has a separate input/output contract. The current repository status is:
 
-| Stage         | Status      | Current contract                                                                                                                                                                  |
-| ------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **extract**   | Partial     | Preflight and a documented read-only GBFRDataTools workflow exist; the repository does not invoke extraction yet.                                                                 |
-| **import**    | Implemented | Imports four allowlisted candidate tables into private staging records with provenance and idempotency.                                                                           |
-| **normalize** | Implemented | Generates a private review candidate from canonical resolved localization joins, then maps only the explicitly reviewed JSON into versioned `staged` records.                     |
-| **diff**      | Implemented | A read-only engine compares two compatible private normalization runs with deterministic, allowlisted results.                                                                    |
-| **review**    | Partial     | Explicit run acceptance persists backup evidence and one baseline per schema version; the local admin shows read-only aggregate status, while rejection and write actions remain. |
-| **publish**   | Partial     | Generates and atomically writes a deterministic allowlisted candidate, records immutable history and shows read-only admin status; write controls and deployment remain.          |
-| **verify**    | Partial     | Domain, wiki and publisher validate the complete snapshot; candidate bytes are re-read and hashed, while deployment verification is not built.                                    |
+| Stage         | Status      | Current contract                                                                                                                                                                          |
+| ------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **extract**   | Partial     | Preflight and a documented read-only GBFRDataTools workflow exist; the repository does not invoke extraction yet.                                                                         |
+| **import**    | Implemented | Imports four allowlisted candidate tables into private staging records with provenance and idempotency.                                                                                   |
+| **normalize** | Implemented | Generates a private review candidate from canonical resolved localization joins, then maps only the explicitly reviewed JSON into versioned `staged` records.                             |
+| **diff**      | Implemented | A read-only engine compares two compatible private normalization runs with deterministic, allowlisted results.                                                                            |
+| **review**    | Partial     | Explicit run acceptance persists backup evidence and one baseline per schema version; the local admin shows read-only aggregate status, while rejection and write actions remain.         |
+| **publish**   | Partial     | Generates and atomically writes a deterministic allowlisted candidate, records immutable history and shows read-only admin status; write controls and actual snapshot release remain.     |
+| **verify**    | Partial     | Domain, wiki and publisher validate snapshot integrity; the Sites artifact validates its Worker, manifest and public/private boundary, while actual snapshot release and rollback remain. |
 
 Stages must be independently repeatable and must not infer success from file existence alone.
 
@@ -84,6 +84,10 @@ The current version 1 snapshot contract is validated by `publicSnapshotSchema` i
 The wiki imports `apps/wiki/public/data/public-snapshot.v1.json` as a build-time static asset and validates the complete value before deriving search, list, and detail records. Invalid records or unsupported schema versions fail with the stable `PUBLIC_SNAPSHOT_INVALID` error code. The loader does not access the filesystem, local database, extractor output, or mining admin at runtime. Replace this file only with an explicitly reviewed publisher output; its current contents remain prototype sample records rather than a real game-data release.
 
 The publisher preview reads only the accepted schema-version baseline, requires every selected record to remain `reviewed`, verifies one extractor version, sorts records deterministically and maps only `id`, `slug` and `nameKo` into public DTOs. It hashes the internal acceptance identity into `sourceRevision`, so private run identifiers, source paths, import provenance and backup evidence are not exposed. A separate writer requires new path-free backup evidence and the observed current content revision, then uses a sibling lock and temporary file to replace and re-verify `public-snapshot.v1.json`. After that file commit, the publication finalizer rechecks the current publication pointer, accepted baseline, exact allowlisted content and review states before atomically recording immutable history, advancing the schema-version pointer and changing the baseline records to `published`. An exact finalization request can be retried after a lost response; an unfinalized candidate is not deployed. Neither operation deploys Sites. See [`publication-preview.md`](publication-preview.md) and [`publication-history.md`](publication-history.md).
+
+## Sites deployment contract
+
+The repository-root `build` keeps the complete workspace build and then copies only the `apps/wiki` Sites Worker, static assets, and hosting manifest into the root `dist/` artifact. The packaging gate parses the hosting manifest, scans every emitted file for known mining-admin, SQLite, and local-path markers, and only then imports the emitted Worker to require `default.fetch`. The checked-in sample snapshot may be used for a private deployment-path checkpoint, but it must not be described as the actual game-data release. See [`sites-deployment.md`](sites-deployment.md).
 
 The project does not maintain a normal game-version history because it targets the expected final content state. If a development-time game transition changes extraction or normalized semantics, record a one-off compatibility label on that import rather than introducing a permanent version catalog.
 
