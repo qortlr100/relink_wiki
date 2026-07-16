@@ -184,6 +184,7 @@ function getPropertyName(name) {
  * Ensure the public wiki's complete workspace dependency graph cannot reach private packages.
  * @param {string} repositoryRoot
  * @param {string} [entryPackageName]
+ * @returns {Promise<string[]>} markers derived from non-public workspace packages
  */
 export async function assertWorkspaceDependencyBoundary(
   repositoryRoot,
@@ -257,6 +258,16 @@ export async function assertWorkspaceDependencyBoundary(
       }
     }
   }
+
+  return [...manifests.keys()]
+    .filter((packageName) => !publicWorkspacePackages.has(packageName))
+    .flatMap((packageName) => {
+      const packageDirectory = manifestDirectories.get(packageName);
+      const packagePath = packageDirectory
+        ? relative(repositoryRoot, packageDirectory).split("\\").join("/")
+        : undefined;
+      return packagePath ? [packageName, packagePath] : [packageName];
+    });
 }
 
 /**
@@ -344,8 +355,11 @@ async function assertPathType(path, predicate, message) {
   }
 }
 
-/** @param {string} directoryPath */
-export async function assertPublicBoundary(directoryPath) {
+/**
+ * @param {string} directoryPath
+ * @param {string[]} [additionalMarkers]
+ */
+export async function assertPublicBoundary(directoryPath, additionalMarkers = []) {
   for (const entry of await readdir(directoryPath, { withFileTypes: true })) {
     const entryPath = join(directoryPath, entry.name);
     if (entry.isSymbolicLink()) {
@@ -353,7 +367,7 @@ export async function assertPublicBoundary(directoryPath) {
     }
 
     if (entry.isDirectory()) {
-      await assertPublicBoundary(entryPath);
+      await assertPublicBoundary(entryPath, additionalMarkers);
       continue;
     }
 
@@ -361,23 +375,27 @@ export async function assertPublicBoundary(directoryPath) {
       throw new Error(`Unsupported entry in the Sites artifact: ${entry.name}`);
     }
 
-    const marker = await findPrivateMarker(entryPath);
+    const marker = await findPrivateMarker(entryPath, additionalMarkers);
     if (marker) {
       throw new Error(`Private marker found in Sites artifact: ${marker}`);
     }
   }
 }
 
-/** @param {string} path */
-async function findPrivateMarker(path) {
-  const markerBuffers = privateMarkers.map((marker) => Buffer.from(marker));
+/**
+ * @param {string} path
+ * @param {string[]} additionalMarkers
+ */
+async function findPrivateMarker(path, additionalMarkers) {
+  const markers = [...new Set([...privateMarkers, ...additionalMarkers])];
+  const markerBuffers = markers.map((marker) => Buffer.from(marker));
   const overlapLength = Math.max(...markerBuffers.map((marker) => marker.length)) - 1;
   let tail = Buffer.alloc(0);
 
   for await (const chunk of createReadStream(path)) {
     const window = Buffer.concat([tail, chunk]);
     const markerIndex = markerBuffers.findIndex((marker) => window.includes(marker));
-    if (markerIndex !== -1) return privateMarkers[markerIndex];
+    if (markerIndex !== -1) return markers[markerIndex];
     tail = window.subarray(Math.max(0, window.length - overlapLength));
   }
 
