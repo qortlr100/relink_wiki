@@ -31,7 +31,7 @@ export default defineConfig(async () => {
     },
     plugins: [
       vinext(),
-      sites(),
+      sites(repositoryRoot),
       cloudflare({
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
         inspectorPort: false,
