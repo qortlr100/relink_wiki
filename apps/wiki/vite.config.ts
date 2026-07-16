@@ -63,6 +63,7 @@ export default defineConfig(async () => {
         inspectorPort: false,
         config: {
           main: "./worker/index.ts",
+          compatibility_date: "2026-07-16",
           compatibility_flags: ["nodejs_compat"],
         },
       }),
