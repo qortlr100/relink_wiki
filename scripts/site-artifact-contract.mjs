@@ -86,18 +86,22 @@ export async function assertWorkerModuleSource(workerPath) {
     typescript.ScriptKind.JS,
   );
   const variables = /** @type {Map<string, import("typescript").Expression>} */ (new Map());
+  const functionNames = /** @type {Set<string>} */ (new Set());
 
   for (const statement of sourceFile.statements) {
-    if (!typescript.isVariableStatement(statement)) continue;
-    for (const declaration of statement.declarationList.declarations) {
-      if (typescript.isIdentifier(declaration.name) && declaration.initializer) {
-        variables.set(declaration.name.text, declaration.initializer);
+    if (typescript.isFunctionDeclaration(statement) && statement.name) {
+      functionNames.add(statement.name.text);
+    } else if (typescript.isVariableStatement(statement)) {
+      for (const declaration of statement.declarationList.declarations) {
+        if (typescript.isIdentifier(declaration.name) && declaration.initializer) {
+          variables.set(declaration.name.text, declaration.initializer);
+        }
       }
     }
   }
 
   const defaultExport = findDefaultExport(sourceFile, variables);
-  if (!defaultExport || !isWorkerObject(defaultExport, variables, new Set())) {
+  if (!defaultExport || !isWorkerObject(defaultExport, variables, functionNames, new Set())) {
     throw new Error("Sites artifact must statically export a default Worker with a fetch handler");
   }
 }
@@ -125,18 +129,19 @@ function findDefaultExport(sourceFile, variables) {
 /**
  * @param {import("typescript").Expression} expression
  * @param {Map<string, import("typescript").Expression>} variables
+ * @param {Set<string>} functionNames
  * @param {Set<string>} visited
  */
-function isWorkerObject(expression, variables, visited) {
+function isWorkerObject(expression, variables, functionNames, visited) {
   if (typescript.isParenthesizedExpression(expression)) {
-    return isWorkerObject(expression.expression, variables, visited);
+    return isWorkerObject(expression.expression, variables, functionNames, visited);
   }
   if (typescript.isIdentifier(expression)) {
     if (visited.has(expression.text)) return false;
     const initializer = variables.get(expression.text);
     if (!initializer) return false;
     visited.add(expression.text);
-    return isWorkerObject(initializer, variables, visited);
+    return isWorkerObject(initializer, variables, functionNames, visited);
   }
   if (!typescript.isObjectLiteralExpression(expression)) return false;
 
@@ -146,30 +151,34 @@ function isWorkerObject(expression, variables, visited) {
     if (typescript.isMethodDeclaration(property)) return true;
     if (typescript.isShorthandPropertyAssignment(property)) {
       const initializer = variables.get(property.name.text);
-      return initializer ? isFunctionValue(initializer, variables, new Set()) : false;
+      return initializer
+        ? isFunctionValue(initializer, variables, functionNames, new Set())
+        : functionNames.has(property.name.text);
     }
     if (!typescript.isPropertyAssignment(property)) return false;
-    return isFunctionValue(property.initializer, variables, new Set());
+    return isFunctionValue(property.initializer, variables, functionNames, new Set());
   });
 }
 
 /**
  * @param {import("typescript").Expression} expression
  * @param {Map<string, import("typescript").Expression>} variables
+ * @param {Set<string>} functionNames
  * @param {Set<string>} visited
  */
-function isFunctionValue(expression, variables, visited) {
+function isFunctionValue(expression, variables, functionNames, visited) {
   if (typescript.isArrowFunction(expression) || typescript.isFunctionExpression(expression)) {
     return true;
   }
   if (typescript.isParenthesizedExpression(expression)) {
-    return isFunctionValue(expression.expression, variables, visited);
+    return isFunctionValue(expression.expression, variables, functionNames, visited);
   }
   if (!typescript.isIdentifier(expression) || visited.has(expression.text)) return false;
+  if (functionNames.has(expression.text)) return true;
   const initializer = variables.get(expression.text);
   if (!initializer) return false;
   visited.add(expression.text);
-  return isFunctionValue(initializer, variables, visited);
+  return isFunctionValue(initializer, variables, functionNames, visited);
 }
 
 /** @param {import("typescript").PropertyName | undefined} name */
@@ -242,9 +251,21 @@ export async function assertWorkspaceDependencyBoundary(
     }
     const packageDirectory = manifestDirectories.get(packageName);
     if (!packageDirectory) throw new Error(`Workspace package directory not found: ${packageName}`);
-    await assertRelativeSourceBoundary(packageDirectory);
-
     const manifest = manifests.get(packageName);
+    const declaredWorkspaceDependencies = new Set(
+      dependencySections.flatMap((section) => {
+        const dependencies = manifest?.[section];
+        return typeof dependencies === "object" && dependencies !== null
+          ? Object.keys(/** @type {Record<string, unknown>} */ (dependencies))
+          : [];
+      }),
+    );
+    await assertRelativeSourceBoundary(packageDirectory, packageDirectory, {
+      packageName,
+      workspacePackageNames: new Set(manifests.keys()),
+      declaredWorkspaceDependencies,
+    });
+
     for (const section of dependencySections) {
       const dependencies = manifest?.[section];
       if (typeof dependencies !== "object" || dependencies === null) continue;
@@ -293,9 +314,10 @@ async function readWorkspaceScopes(repositoryRoot) {
 
 /**
  * @param {string} packageDirectory
- * @param {string} [currentDirectory]
+ * @param {string} currentDirectory
+ * @param {{ packageName: string, workspacePackageNames: Set<string>, declaredWorkspaceDependencies: Set<string> }} options
  */
-async function assertRelativeSourceBoundary(packageDirectory, currentDirectory = packageDirectory) {
+async function assertRelativeSourceBoundary(packageDirectory, currentDirectory, options) {
   for (const entry of await readdir(currentDirectory, { withFileTypes: true })) {
     if (ignoredSourceDirectories.has(entry.name)) continue;
     const entryPath = join(currentDirectory, entry.name);
@@ -303,7 +325,7 @@ async function assertRelativeSourceBoundary(packageDirectory, currentDirectory =
       throw new Error(`Symbolic links are not allowed in the public wiki source: ${entryPath}`);
     }
     if (entry.isDirectory()) {
-      await assertRelativeSourceBoundary(packageDirectory, entryPath);
+      await assertRelativeSourceBoundary(packageDirectory, entryPath, options);
       continue;
     }
     if (!entry.isFile() || !/\.(?:[cm]?[jt]sx?)$/u.test(entry.name)) continue;
@@ -327,6 +349,19 @@ async function assertRelativeSourceBoundary(packageDirectory, currentDirectory =
             `Public workspace source import escapes package boundary: ${entryPath} -> ${specifier}`,
           );
         }
+      } else if (specifier) {
+        const workspacePackageName = [...options.workspacePackageNames]
+          .sort((left, right) => right.length - left.length)
+          .find((name) => specifier === name || specifier.startsWith(`${name}/`));
+        if (
+          workspacePackageName &&
+          workspacePackageName !== options.packageName &&
+          !options.declaredWorkspaceDependencies.has(workspacePackageName)
+        ) {
+          throw new Error(
+            `Public workspace source imports undeclared workspace dependency: ${entryPath} -> ${workspacePackageName}`,
+          );
+        }
       }
       typescript.forEachChild(node, inspectNode);
     };
@@ -344,17 +379,22 @@ function getModuleSpecifier(node) {
     return node.moduleSpecifier.text;
   }
   if (!typescript.isCallExpression(node) || node.arguments.length !== 1) return undefined;
+  const isModuleLoad =
+    node.expression.kind === typescript.SyntaxKind.ImportKeyword ||
+    (typescript.isIdentifier(node.expression) && node.expression.text === "require");
+  if (!isModuleLoad) return undefined;
   const argument = node.arguments[0];
+  if (!argument) return undefined;
   if (
-    argument &&
-    (typescript.isStringLiteral(argument) ||
-      typescript.isNoSubstitutionTemplateLiteral(argument)) &&
-    (node.expression.kind === typescript.SyntaxKind.ImportKeyword ||
-      (typescript.isIdentifier(node.expression) && node.expression.text === "require"))
+    typescript.isStringLiteral(argument) ||
+    typescript.isNoSubstitutionTemplateLiteral(argument)
   ) {
     return argument.text;
   }
-  return undefined;
+  if (typescript.isTemplateExpression(argument) && argument.head.text.length > 0) {
+    return argument.head.text;
+  }
+  throw new Error("Dynamic module specifier must have a statically analyzable prefix");
 }
 
 /**
