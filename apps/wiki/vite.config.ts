@@ -22,6 +22,8 @@ export default defineConfig(async () => {
     server: {
       ...(isCodexSeatbeltSandbox
         ? {
+            // Agent preview runs inside Codex's isolated network namespace. This host
+            // allowlist enables terminal.local routing; it is not an access-control boundary.
             host: "0.0.0.0",
             allowedHosts: ["terminal.local"],
             watch: { useFsEvents: false, usePolling: true },
