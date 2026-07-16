@@ -1,5 +1,6 @@
 import { cp, readFile, readdir, rm } from "node:fs/promises";
-import { pathToFileURL } from "node:url";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const sourceDirectory = new URL("../apps/wiki/dist/", import.meta.url);
 const targetDirectory = new URL("../dist/", import.meta.url);
@@ -16,9 +17,9 @@ await rm(targetDirectory, { recursive: true, force: true });
 await cp(sourceDirectory, targetDirectory, { recursive: true });
 
 JSON.parse(await readFile(hostingUrl, "utf8"));
-await assertPublicBoundary(targetDirectory);
+await assertPublicBoundary(fileURLToPath(targetDirectory));
 
-const workerImportUrl = pathToFileURL(workerUrl.pathname);
+const workerImportUrl = new URL(workerUrl.href);
 workerImportUrl.searchParams.set(
   "sites-validation",
   `${String(globalThis.process.pid)}-${String(Date.now())}`,
@@ -45,16 +46,16 @@ function isWorkerModule(value) {
   );
 }
 
-/** @param {URL} directoryUrl */
-async function assertPublicBoundary(directoryUrl) {
-  for (const entry of await readdir(directoryUrl, { withFileTypes: true })) {
-    const entryUrl = new URL(entry.name, directoryUrl);
+/** @param {string} directoryPath */
+async function assertPublicBoundary(directoryPath) {
+  for (const entry of await readdir(directoryPath, { withFileTypes: true })) {
+    const entryPath = join(directoryPath, entry.name);
     if (entry.isSymbolicLink()) {
       throw new Error(`Symbolic links are not allowed in the Sites artifact: ${entry.name}`);
     }
 
     if (entry.isDirectory()) {
-      await assertPublicBoundary(new URL(`${entryUrl.href}/`));
+      await assertPublicBoundary(entryPath);
       continue;
     }
 
@@ -62,7 +63,7 @@ async function assertPublicBoundary(directoryUrl) {
       throw new Error(`Unsupported entry in the Sites artifact: ${entry.name}`);
     }
 
-    const content = await readFile(entryUrl);
+    const content = await readFile(entryPath);
     const marker = privateMarkers.find((candidate) => content.includes(candidate));
     if (marker) {
       throw new Error(`Private marker found in Sites artifact: ${marker}`);
