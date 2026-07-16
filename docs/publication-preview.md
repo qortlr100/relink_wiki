@@ -32,6 +32,12 @@ The output directory must already exist as an absolute, non-symlinked directory 
 
 This API can be tested with temporary directories on any supported development platform. The first use against the canonical Windows output location and NAS backup still requires local operator verification.
 
+## Local preview command
+
+With `RELINK_DATABASE_PATH` set in the private shell environment, run `pnpm preview:public` from the repository root. The command opens the existing SQLite database read-only, creates the same validated allowlist preview, and writes `data/exports/public-snapshot-preview.v1.json`. That directory is Git-ignored, and the command reports only the public revision, category counts and output digest without echoing the database path or private baseline identifiers.
+
+The local preview file is not the publication candidate consumed by the writer. Generating it does not require a new backup receipt, replace `apps/wiki/public/data/public-snapshot.v1.json`, change review state, record publication history or deploy the wiki.
+
 ## Current integration boundary
 
 The mining admin does not call these APIs yet. After the writer commits and verifies a candidate, the separate database finalizer records immutable publication history and changes the accepted records to `published` in one transaction. The caller must retain the publication UUID, snapshot and writer receipt so an exact finalization request can be retried if the response is lost. A written but unfinalized candidate is not deployed. See [`publication-history.md`](publication-history.md). The repository's sample snapshot remains UI fixture data rather than a generated release, and Sites deployment is still later work.
