@@ -1,5 +1,5 @@
 import { access, cp, mkdir, rm } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { resolve } from "node:path";
 import type { Plugin } from "vite";
 
 async function exists(path: string): Promise<boolean> {
@@ -14,30 +14,13 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
-async function findRepositoryRoot(startDirectory: string): Promise<string> {
-  let currentDirectory = resolve(startDirectory);
-
-  for (;;) {
-    if (await exists(resolve(currentDirectory, ".git"))) {
-      if (!(await exists(resolve(currentDirectory, "pnpm-workspace.yaml")))) {
-        throw new Error(`Git root is not the Relink Wiki workspace: ${currentDirectory}`);
-      }
-      return currentDirectory;
-    }
-
-    const parentDirectory = dirname(currentDirectory);
-    if (parentDirectory === currentDirectory) {
-      throw new Error(`Unable to find the Git repository root from Vite root: ${startDirectory}`);
-    }
-    currentDirectory = parentDirectory;
-  }
-}
-
-async function copyHostingConfig(root: string): Promise<void> {
+async function copyHostingConfig(root: string, repositoryRoot: string): Promise<void> {
   const outputDirectory = resolve(root, "dist", ".openai");
-  const repositoryRoot = await findRepositoryRoot(root);
   const hostingConfig = resolve(repositoryRoot, ".openai", "hosting.json");
 
+  if (!(await exists(resolve(repositoryRoot, "pnpm-workspace.yaml")))) {
+    throw new Error(`Sites repository root is not a pnpm workspace: ${repositoryRoot}`);
+  }
   if (!(await exists(hostingConfig))) {
     throw new Error(`Missing .openai/hosting.json at repository root: ${repositoryRoot}`);
   }
@@ -47,7 +30,7 @@ async function copyHostingConfig(root: string): Promise<void> {
   await cp(hostingConfig, resolve(outputDirectory, "hosting.json"));
 }
 
-export function sites(): Plugin {
+export function sites(repositoryRoot: string): Plugin {
   let root = process.cwd();
   let copyHostingConfigPromise: Promise<void> | undefined;
 
@@ -59,7 +42,7 @@ export function sites(): Plugin {
       root = config.root;
     },
     async closeBundle() {
-      copyHostingConfigPromise ??= copyHostingConfig(root);
+      copyHostingConfigPromise ??= copyHostingConfig(root, repositoryRoot);
       await copyHostingConfigPromise;
     },
   };
