@@ -14,27 +14,33 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
+async function copyHostingConfig(root: string): Promise<void> {
+  const outputDirectory = resolve(root, "dist", ".openai");
+  const hostingConfig = resolve(root, "..", "..", ".openai", "hosting.json");
+
+  if (!(await exists(hostingConfig))) {
+    throw new Error("Missing root .openai/hosting.json");
+  }
+
+  await rm(outputDirectory, { recursive: true, force: true });
+  await mkdir(outputDirectory, { recursive: true });
+  await cp(hostingConfig, resolve(outputDirectory, "hosting.json"));
+}
+
 export function sites(): Plugin {
   let root = process.cwd();
+  let copyHostingConfigPromise: Promise<void> | undefined;
 
   return {
     name: "sites",
     apply: "build",
+    sharedDuringBuild: true,
     configResolved(config) {
       root = config.root;
     },
     async closeBundle() {
-      const outputDirectory = resolve(root, "dist", ".openai");
-      const hostingConfig = resolve(root, "..", "..", ".openai", "hosting.json");
-
-      await rm(outputDirectory, { recursive: true, force: true });
-      await mkdir(outputDirectory, { recursive: true });
-
-      if (!(await exists(hostingConfig))) {
-        throw new Error("Missing root .openai/hosting.json");
-      }
-
-      await cp(hostingConfig, resolve(outputDirectory, "hosting.json"));
+      copyHostingConfigPromise ??= copyHostingConfig(root);
+      await copyHostingConfigPromise;
     },
   };
 }
