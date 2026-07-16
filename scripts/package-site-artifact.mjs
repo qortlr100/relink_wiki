@@ -14,13 +14,13 @@ const targetDirectory = new URL("../dist/", import.meta.url);
 const workerUrl = new URL("server/index.js", targetDirectory);
 const hostingUrl = new URL(".openai/hosting.json", targetDirectory);
 
-await assertWorkspaceDependencyBoundary(repositoryRoot);
+const privateWorkspaceMarkers = await assertWorkspaceDependencyBoundary(repositoryRoot);
 await rm(targetDirectory, { recursive: true, force: true });
 await cp(sourceDirectory, targetDirectory, { recursive: true });
 
 await assertRequiredArtifactPaths(fileURLToPath(targetDirectory));
 assertHostingManifest(JSON.parse(await readFile(hostingUrl, "utf8")));
-await assertPublicBoundary(fileURLToPath(targetDirectory));
+await assertPublicBoundary(fileURLToPath(targetDirectory), privateWorkspaceMarkers);
 await assertWorkerModuleSource(fileURLToPath(workerUrl));
 
 globalThis.console.log("Validated Sites artifact and public/private deployment boundary.");
