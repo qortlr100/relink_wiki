@@ -14,7 +14,11 @@ The final artifact must contain:
 - `dist/client/` with the wiki's static assets and version 1 snapshot;
 - `dist/.openai/hosting.json` with the Sites project identity.
 
-Packaging fails if the Worker or manifest is missing or invalid. It also scans emitted text assets for known mining-admin, SQLite dependency, review repository, and local database configuration markers.
+Packaging fails if the Worker or manifest is missing or invalid. Before loading the Worker, it rejects symbolic links and unsupported filesystem entries, then scans every emitted file for known mining-admin, SQLite dependency, review repository, and local database configuration markers.
+
+The marker scan is a defense-in-depth check, not proof that semantically equivalent or obfuscated private code is absent. The primary boundary remains the dedicated `apps/wiki` entry point and its dependency graph. The scan deliberately covers binary as well as text assets so a new extension or source-map format cannot silently bypass the gate; artifact size and packaging time should be monitored before changing that fail-closed policy.
+
+The root `dev` command delegates through `npm --prefix apps/wiki` so Sites agent preview can start without a separately exposed `pnpm` executable while package-local script resolution still selects the wiki's declared Vite dependency.
 
 ## Public and private boundary
 
