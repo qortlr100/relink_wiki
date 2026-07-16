@@ -14,13 +14,15 @@ The final artifact must contain:
 - `dist/client/` with the wiki's static assets and version 1 snapshot;
 - `dist/.openai/hosting.json` with the Sites project identity.
 
-Packaging fails if the Worker or manifest is missing or invalid, including a missing or empty Sites `project_id`. Before loading the Worker, it rejects symbolic links and unsupported filesystem entries, then scans every emitted file for known mining-admin, SQLite dependency, review repository, and local database configuration markers.
+Packaging fails if the Worker, `client/data/public-snapshot.v1.json`, or manifest is missing or invalid. The manifest permits only `project_id` plus disabled `d1` and `r2` entries; unexpected keys and hosted resource bindings fail closed. Before loading the Worker, packaging rejects symbolic links and unsupported filesystem entries, then scans every emitted file for known mining-admin, SQLite dependency, review repository, and local database configuration markers.
 
 The marker scan is a defense-in-depth check, not proof that semantically equivalent or obfuscated private code is absent. The primary boundary remains the dedicated `apps/wiki` entry point and its dependency graph. The scan deliberately covers binary as well as text assets so a new extension or source-map format cannot silently bypass the gate; artifact size and packaging time should be monitored before changing that fail-closed policy.
 
 The packaging script imports the boundary-checked Worker in Node only to verify the ESM `default.fetch` module shape. That import is not a Cloudflare Workers runtime test and may reject future Workers-only top-level globals even when Cloudflare would support them. The immutable Sites checkpoint build and deployment status remain the hosted-runtime verification step.
 
 The root `dev` command delegates through `npm --prefix apps/wiki` so Sites agent preview can start without a separately exposed `pnpm` executable while package-local script resolution still selects the wiki's declared Vite dependency.
+
+The Sites lifecycle may create `.sites-runtime/` for local package-manager and checkpoint cache state. That directory is tooling-owned, is not application input, and remains excluded from Git, formatting, linting, and TypeScript discovery.
 
 ## Public and private boundary
 
