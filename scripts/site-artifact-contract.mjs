@@ -11,12 +11,7 @@ const privateMarkers = [
   "review-dashboard-repository",
 ];
 const hostingManifestKeys = new Set(["d1", "project_id", "r2"]);
-const privateWorkspacePackages = new Set([
-  "@relink-wiki/database",
-  "@relink-wiki/extractor",
-  "@relink-wiki/mining-admin",
-  "@relink-wiki/publisher",
-]);
+const publicWorkspacePackages = new Set(["@relink-wiki/wiki", "@relink-wiki/domain"]);
 const workspaceScopes = ["apps", "packages", "tools"];
 const dependencySections = [
   "dependencies",
@@ -144,11 +139,27 @@ function isWorkerObject(expression, variables, visited) {
     if (name !== "fetch") return false;
     if (typescript.isMethodDeclaration(property)) return true;
     if (!typescript.isPropertyAssignment(property)) return false;
-    return (
-      typescript.isArrowFunction(property.initializer) ||
-      typescript.isFunctionExpression(property.initializer)
-    );
+    return isFunctionValue(property.initializer, variables, new Set());
   });
+}
+
+/**
+ * @param {import("typescript").Expression} expression
+ * @param {Map<string, import("typescript").Expression>} variables
+ * @param {Set<string>} visited
+ */
+function isFunctionValue(expression, variables, visited) {
+  if (typescript.isArrowFunction(expression) || typescript.isFunctionExpression(expression)) {
+    return true;
+  }
+  if (typescript.isParenthesizedExpression(expression)) {
+    return isFunctionValue(expression.expression, variables, visited);
+  }
+  if (!typescript.isIdentifier(expression) || visited.has(expression.text)) return false;
+  const initializer = variables.get(expression.text);
+  if (!initializer) return false;
+  visited.add(expression.text);
+  return isFunctionValue(initializer, variables, visited);
 }
 
 /** @param {import("typescript").PropertyName | undefined} name */
@@ -209,9 +220,9 @@ export async function assertWorkspaceDependencyBoundary(
     if (visited.has(packageName)) continue;
     visited.add(packageName);
 
-    if (privateWorkspacePackages.has(packageName)) {
+    if (!publicWorkspacePackages.has(packageName)) {
       throw new Error(
-        `Private workspace dependency is reachable from the public wiki: ${dependencyPath.join(" -> ")}`,
+        `Non-public workspace dependency is reachable from the public wiki: ${dependencyPath.join(" -> ")}`,
       );
     }
 
