@@ -8,6 +8,8 @@ export default tseslint.config(
       "**/.next/**",
       "**/dist/**",
       "**/node_modules/**",
+      ".sites-runtime/**",
+      ".wrangler/**",
     ],
   },
   eslint.configs.recommended,
@@ -16,7 +18,7 @@ export default tseslint.config(
   {
     languageOptions: {
       parserOptions: {
-        projectService: { allowDefaultProject: ["vitest.config.ts"] },
+        projectService: true,
         tsconfigRootDir: import.meta.dirname,
       },
     },
