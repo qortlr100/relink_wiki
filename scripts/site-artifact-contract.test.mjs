@@ -103,6 +103,11 @@ describe("Sites artifact contract", () => {
     await expect(assertWorkerModuleSource(workerPath)).resolves.toBeUndefined();
     await writeFile(
       workerPath,
+      "function handler(request) { return new Response(request.url); } export default { fetch: handler };",
+    );
+    await expect(assertWorkerModuleSource(workerPath)).resolves.toBeUndefined();
+    await writeFile(
+      workerPath,
       "const unrelated = { fetch() {} }; const worker = {}; export { worker as default };",
     );
     await expect(assertWorkerModuleSource(workerPath)).rejects.toThrow("statically export");
@@ -199,6 +204,45 @@ describe("Sites artifact contract", () => {
 
     await expect(assertWorkspaceDependencyBoundary(repositoryRoot)).rejects.toThrow(
       "source import escapes",
+    );
+  });
+
+  it("rejects interpolated dynamic imports that escape a public package", async () => {
+    const repositoryRoot = await createWorkspaceDirectory();
+    await mkdir(join(repositoryRoot, "apps", "wiki", "src"), { recursive: true });
+    await writeFile(
+      join(repositoryRoot, "apps", "wiki", "package.json"),
+      JSON.stringify({ name: "@relink-wiki/wiki" }),
+    );
+    await writeFile(
+      join(repositoryRoot, "apps", "wiki", "src", "page.ts"),
+      "const moduleName = 'client'; void import(`../../../packages/database/${moduleName}`);",
+    );
+
+    await expect(assertWorkspaceDependencyBoundary(repositoryRoot)).rejects.toThrow(
+      "source import escapes",
+    );
+  });
+
+  it("rejects undeclared bare workspace imports", async () => {
+    const repositoryRoot = await createWorkspaceDirectory();
+    await mkdir(join(repositoryRoot, "apps", "wiki", "src"), { recursive: true });
+    await mkdir(join(repositoryRoot, "apps", "mining-admin"), { recursive: true });
+    await writeFile(
+      join(repositoryRoot, "apps", "wiki", "package.json"),
+      JSON.stringify({ name: "@relink-wiki/wiki" }),
+    );
+    await writeFile(
+      join(repositoryRoot, "apps", "mining-admin", "package.json"),
+      JSON.stringify({ name: "@relink-wiki/mining-admin" }),
+    );
+    await writeFile(
+      join(repositoryRoot, "apps", "wiki", "src", "page.ts"),
+      'import { database } from "@relink-wiki/mining-admin/db";',
+    );
+
+    await expect(assertWorkspaceDependencyBoundary(repositoryRoot)).rejects.toThrow(
+      "imports undeclared workspace dependency",
     );
   });
 
