@@ -84,6 +84,11 @@ describe("Sites artifact contract", () => {
     await expect(assertWorkerModuleSource(workerPath)).resolves.toBeUndefined();
     await writeFile(
       workerPath,
+      "const handler = (request) => new Response(request.url); export default { fetch: handler };",
+    );
+    await expect(assertWorkerModuleSource(workerPath)).resolves.toBeUndefined();
+    await writeFile(
+      workerPath,
       "const unrelated = { fetch() {} }; const worker = {}; export { worker as default };",
     );
     await expect(assertWorkerModuleSource(workerPath)).rejects.toThrow("statically export");
