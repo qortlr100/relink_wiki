@@ -1,21 +1,20 @@
-import { cp, readFile, readdir, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { cp, readFile, rm } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import {
+  assertHostingManifest,
+  assertPublicBoundary,
+  assertRequiredArtifactPaths,
+} from "./site-artifact-contract.mjs";
 
 const sourceDirectory = new URL("../apps/wiki/dist/", import.meta.url);
 const targetDirectory = new URL("../dist/", import.meta.url);
 const workerUrl = new URL("server/index.js", targetDirectory);
 const hostingUrl = new URL(".openai/hosting.json", targetDirectory);
-const privateMarkers = [
-  "RELINK_DATABASE_PATH",
-  "better-sqlite3",
-  "apps/mining-admin",
-  "review-dashboard-repository",
-];
 
 await rm(targetDirectory, { recursive: true, force: true });
 await cp(sourceDirectory, targetDirectory, { recursive: true });
 
+await assertRequiredArtifactPaths(fileURLToPath(targetDirectory));
 assertHostingManifest(JSON.parse(await readFile(hostingUrl, "utf8")));
 await assertPublicBoundary(fileURLToPath(targetDirectory));
 
@@ -44,44 +43,6 @@ function isWorkerModule(value) {
     "fetch" in value.default &&
     typeof value.default.fetch === "function"
   );
-}
-
-/** @param {unknown} value */
-function assertHostingManifest(value) {
-  if (
-    typeof value !== "object" ||
-    value === null ||
-    !("project_id" in value) ||
-    typeof value.project_id !== "string" ||
-    value.project_id.trim().length === 0
-  ) {
-    throw new Error("Sites artifact hosting.json is missing project_id");
-  }
-}
-
-/** @param {string} directoryPath */
-async function assertPublicBoundary(directoryPath) {
-  for (const entry of await readdir(directoryPath, { withFileTypes: true })) {
-    const entryPath = join(directoryPath, entry.name);
-    if (entry.isSymbolicLink()) {
-      throw new Error(`Symbolic links are not allowed in the Sites artifact: ${entry.name}`);
-    }
-
-    if (entry.isDirectory()) {
-      await assertPublicBoundary(entryPath);
-      continue;
-    }
-
-    if (!entry.isFile()) {
-      throw new Error(`Unsupported entry in the Sites artifact: ${entry.name}`);
-    }
-
-    const content = await readFile(entryPath);
-    const marker = privateMarkers.find((candidate) => content.includes(candidate));
-    if (marker) {
-      throw new Error(`Private marker found in Sites artifact: ${marker}`);
-    }
-  }
 }
 
 globalThis.console.log("Validated Sites artifact and public/private deployment boundary.");
