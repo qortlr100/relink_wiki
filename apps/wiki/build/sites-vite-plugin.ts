@@ -37,6 +37,8 @@ export function sites(repositoryRoot: string): Plugin {
   return {
     name: "sites",
     apply: "build",
+    // Vite 8 shares this instance and calls its closeBundle hook once after all
+    // environments, so the manifest copy cannot race a later environment cleanup.
     sharedDuringBuild: true,
     configResolved(config) {
       root = config.root;
