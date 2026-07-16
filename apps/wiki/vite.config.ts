@@ -1,14 +1,40 @@
-import { resolve } from "node:path";
+import { realpathSync } from "node:fs";
+import { isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import vinext from "vinext";
 import { defineConfig } from "vite";
 import { sites } from "./build/sites-vite-plugin";
 
 const repositoryRoot = fileURLToPath(new URL("../../", import.meta.url));
-const isCodexAgentPreview =
-  process.env.CODEX_SANDBOX === "seatbelt" &&
-  process.env.CODEX_NETWORK_ALLOW_LOCAL_BINDING === "1" &&
-  process.env.CODEX_SANDBOX_NETWORK_DISABLED === "1";
+function isCodexAgentPreviewRuntime(): boolean {
+  const runtimeRoot = process.env.CODEX_PRIMARY_RUNTIME_ROOT;
+  const runtimeNode = process.env.CODEX_PRIMARY_RUNTIME_NODE;
+  if (
+    process.env.CODEX_SANDBOX !== "seatbelt" ||
+    process.env.CODEX_NETWORK_ALLOW_LOCAL_BINDING !== "1" ||
+    process.env.CODEX_SANDBOX_NETWORK_DISABLED !== "1" ||
+    !runtimeRoot ||
+    !runtimeNode ||
+    !isAbsolute(runtimeRoot) ||
+    !isAbsolute(runtimeNode)
+  ) {
+    return false;
+  }
+
+  try {
+    const canonicalRoot = realpathSync(runtimeRoot);
+    const canonicalNode = realpathSync(runtimeNode);
+    return (
+      canonicalRoot.startsWith("/opt/codex/runtimes/") &&
+      !relative(canonicalRoot, canonicalNode).startsWith("..") &&
+      canonicalNode === realpathSync(process.execPath)
+    );
+  } catch {
+    return false;
+  }
+}
+
+const isCodexAgentPreview = isCodexAgentPreviewRuntime();
 
 export default defineConfig(async () => {
   process.env.WRANGLER_WRITE_LOGS ??= "false";
