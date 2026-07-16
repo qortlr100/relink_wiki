@@ -43,7 +43,7 @@ The admin application binds to `127.0.0.1:3100` in its development command. It o
 
 The current and initial publication format is a versioned static JSON snapshot. Local SQLite remains the private source of truth, GitHub stores source and schemas only, and Sites is the selected public hosting surface. A hosted database or object storage must not be introduced until measured need justifies it and an accepted architecture decision defines the public boundary.
 
-Sites consumes the repository-root artifact produced from `apps/wiki` only. It does not build or deploy `apps/mining-admin`, and the packaging gate scans emitted text assets for private boundary markers before a checkpoint can proceed. See [`sites-deployment.md`](sites-deployment.md).
+Sites consumes the repository-root artifact produced from `apps/wiki` only. It does not build or deploy `apps/mining-admin`, and the packaging gate scans every emitted file for private boundary markers before a checkpoint can proceed. See [`sites-deployment.md`](sites-deployment.md).
 
 The version 1 public prototype snapshot exposes four allowlisted collections: `characters`, `weapons`, `sigils`, and `skills`. Each collection contains only its public identifier, slug, Korean display name, and the literal `published` review state. The wiki validates the complete snapshot before rendering it.
 
