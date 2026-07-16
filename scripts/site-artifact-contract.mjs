@@ -1,3 +1,5 @@
+import { createReadStream } from "node:fs";
+import { Buffer } from "node:buffer";
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -8,6 +10,20 @@ const privateMarkers = [
   "review-dashboard-repository",
 ];
 const hostingManifestKeys = new Set(["d1", "project_id", "r2"]);
+const privateWorkspacePackages = new Set([
+  "@relink-wiki/database",
+  "@relink-wiki/extractor",
+  "@relink-wiki/mining-admin",
+  "@relink-wiki/publisher",
+]);
+const workspaceScopes = ["apps", "packages", "tools"];
+const dependencySections = [
+  "dependencies",
+  "devDependencies",
+  "optionalDependencies",
+  "peerDependencies",
+];
+const parseJson = /** @type {(source: string) => unknown} */ (JSON.parse);
 
 /** @param {unknown} value */
 export function assertHostingManifest(value) {
@@ -32,6 +48,8 @@ export function assertHostingManifest(value) {
 export async function assertRequiredArtifactPaths(artifactDirectory) {
   const clientDirectory = join(artifactDirectory, "client");
   const snapshotPath = join(clientDirectory, "data", "public-snapshot.v1.json");
+  const workerPath = join(artifactDirectory, "server", "index.js");
+  const hostingManifestPath = join(artifactDirectory, ".openai", "hosting.json");
 
   await assertPathType(
     clientDirectory,
@@ -43,6 +61,100 @@ export async function assertRequiredArtifactPaths(artifactDirectory) {
     (entry) => entry.isFile(),
     "Sites artifact is missing the public snapshot",
   );
+  await assertPathType(
+    workerPath,
+    (entry) => entry.isFile(),
+    "Sites artifact is missing the Worker entrypoint",
+  );
+  await assertPathType(
+    hostingManifestPath,
+    (entry) => entry.isFile(),
+    "Sites artifact is missing the hosting manifest",
+  );
+}
+
+/** @param {string} workerPath */
+export async function assertWorkerModuleSource(workerPath) {
+  const source = await readFile(workerPath, "utf8");
+  const hasDefaultExport =
+    /\bexport\s+default\b/u.test(source) ||
+    /\bexport\s*\{[^}]*\bas\s+default\b[^}]*\}/u.test(source);
+  const hasFetchMethod = /\bfetch\s*(?:\([^)]*\)|:)\s*(?:\{|(?:async\s*)?function\b)/u.test(source);
+
+  if (!hasDefaultExport || !hasFetchMethod) {
+    throw new Error("Sites artifact must statically export a default Worker with a fetch handler");
+  }
+}
+
+/**
+ * Ensure the public wiki's complete workspace dependency graph cannot reach private packages.
+ * @param {string} repositoryRoot
+ * @param {string} [entryPackageName]
+ */
+export async function assertWorkspaceDependencyBoundary(
+  repositoryRoot,
+  entryPackageName = "@relink-wiki/wiki",
+) {
+  const manifests = /** @type {Map<string, Record<string, unknown>>} */ (new Map());
+
+  for (const scope of workspaceScopes) {
+    const scopePath = join(repositoryRoot, scope);
+    let entries;
+    try {
+      entries = await readdir(scopePath, { withFileTypes: true });
+    } catch (error) {
+      if (error instanceof Error && "code" in error && error.code === "ENOENT") continue;
+      throw error;
+    }
+
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const manifestPath = join(scopePath, entry.name, "package.json");
+      try {
+        const value = parseJson(await readFile(manifestPath, "utf8"));
+        if (typeof value !== "object" || value === null || Array.isArray(value)) continue;
+        const manifest = /** @type {Record<string, unknown>} */ (value);
+        if (typeof manifest.name === "string") manifests.set(manifest.name, manifest);
+      } catch (error) {
+        if (error instanceof Error && "code" in error && error.code === "ENOENT") continue;
+        throw error;
+      }
+    }
+  }
+
+  if (!manifests.has(entryPackageName)) {
+    throw new Error(`Workspace package not found: ${entryPackageName}`);
+  }
+
+  const pending = /** @type {Array<[string, string[]]>} */ ([
+    [entryPackageName, [entryPackageName]],
+  ]);
+  const visited = /** @type {Set<string>} */ (new Set());
+  while (pending.length > 0) {
+    const next = pending.shift();
+    if (!next) break;
+    const [packageName, dependencyPath] = next;
+    if (visited.has(packageName)) continue;
+    visited.add(packageName);
+
+    if (privateWorkspacePackages.has(packageName)) {
+      throw new Error(
+        `Private workspace dependency is reachable from the public wiki: ${dependencyPath.join(" -> ")}`,
+      );
+    }
+
+    const manifest = manifests.get(packageName);
+    for (const section of dependencySections) {
+      const dependencies = manifest?.[section];
+      if (typeof dependencies !== "object" || dependencies === null) continue;
+      for (const dependencyName of Object.keys(
+        /** @type {Record<string, unknown>} */ (dependencies),
+      )) {
+        if (manifests.has(dependencyName))
+          pending.push([dependencyName, [...dependencyPath, dependencyName]]);
+      }
+    }
+  }
 }
 
 /**
@@ -82,10 +194,25 @@ export async function assertPublicBoundary(directoryPath) {
       throw new Error(`Unsupported entry in the Sites artifact: ${entry.name}`);
     }
 
-    const content = await readFile(entryPath);
-    const marker = privateMarkers.find((candidate) => content.includes(candidate));
+    const marker = await findPrivateMarker(entryPath);
     if (marker) {
       throw new Error(`Private marker found in Sites artifact: ${marker}`);
     }
   }
+}
+
+/** @param {string} path */
+async function findPrivateMarker(path) {
+  const markerBuffers = privateMarkers.map((marker) => Buffer.from(marker));
+  const overlapLength = Math.max(...markerBuffers.map((marker) => marker.length)) - 1;
+  let tail = Buffer.alloc(0);
+
+  for await (const chunk of createReadStream(path)) {
+    const window = Buffer.concat([tail, chunk]);
+    const markerIndex = markerBuffers.findIndex((marker) => window.includes(marker));
+    if (markerIndex !== -1) return privateMarkers[markerIndex];
+    tail = window.subarray(Math.max(0, window.length - overlapLength));
+  }
+
+  return undefined;
 }
