@@ -89,6 +89,11 @@ describe("Sites artifact contract", () => {
     await expect(assertWorkerModuleSource(workerPath)).resolves.toBeUndefined();
     await writeFile(
       workerPath,
+      "const fetch = (request) => new Response(request.url); export default { fetch };",
+    );
+    await expect(assertWorkerModuleSource(workerPath)).resolves.toBeUndefined();
+    await writeFile(
+      workerPath,
       "const unrelated = { fetch() {} }; const worker = {}; export { worker as default };",
     );
     await expect(assertWorkerModuleSource(workerPath)).rejects.toThrow("statically export");
@@ -116,6 +121,28 @@ describe("Sites artifact contract", () => {
 
     await expect(assertWorkspaceDependencyBoundary(repositoryRoot)).rejects.toThrow(
       "@relink-wiki/wiki -> @relink-wiki/domain -> @relink-wiki/database",
+    );
+  });
+
+  it("rejects relative source imports that escape the public wiki", async () => {
+    const repositoryRoot = await createArtifactDirectory();
+    await mkdir(join(repositoryRoot, "apps", "wiki", "src"), { recursive: true });
+    await mkdir(join(repositoryRoot, "packages", "database"), { recursive: true });
+    await writeFile(
+      join(repositoryRoot, "apps", "wiki", "package.json"),
+      JSON.stringify({ name: "@relink-wiki/wiki" }),
+    );
+    await writeFile(
+      join(repositoryRoot, "packages", "database", "package.json"),
+      JSON.stringify({ name: "@relink-wiki/database" }),
+    );
+    await writeFile(
+      join(repositoryRoot, "apps", "wiki", "src", "page.ts"),
+      'import { database } from "../../../packages/database/src/client";',
+    );
+
+    await expect(assertWorkspaceDependencyBoundary(repositoryRoot)).rejects.toThrow(
+      "Public wiki source import escapes apps/wiki",
     );
   });
 
