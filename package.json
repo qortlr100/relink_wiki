@@ -13,9 +13,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
-    "typecheck": "pnpm -r typecheck && tsc --noEmit -p tsconfig.json",
+    "typecheck": "corepack pnpm -r typecheck && tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "build": "pnpm -r build && pnpm site:package",
+    "build": "corepack pnpm -r build && corepack pnpm site:package",
     "site:package": "node scripts/package-site-artifact.mjs",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
