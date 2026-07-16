@@ -5,11 +5,18 @@ const sourceDirectory = new URL("../apps/wiki/dist/", import.meta.url);
 const targetDirectory = new URL("../dist/", import.meta.url);
 const workerUrl = new URL("server/index.js", targetDirectory);
 const hostingUrl = new URL(".openai/hosting.json", targetDirectory);
+const privateMarkers = [
+  "RELINK_DATABASE_PATH",
+  "better-sqlite3",
+  "apps/mining-admin",
+  "review-dashboard-repository",
+];
 
 await rm(targetDirectory, { recursive: true, force: true });
 await cp(sourceDirectory, targetDirectory, { recursive: true });
 
 JSON.parse(await readFile(hostingUrl, "utf8"));
+await assertPublicBoundary(targetDirectory);
 
 const workerImportUrl = pathToFileURL(workerUrl.pathname);
 workerImportUrl.searchParams.set(
@@ -38,20 +45,21 @@ function isWorkerModule(value) {
   );
 }
 
-const privateMarkers = [
-  "RELINK_DATABASE_PATH",
-  "better-sqlite3",
-  "apps/mining-admin",
-  "review-dashboard-repository",
-];
-
 /** @param {URL} directoryUrl */
 async function assertPublicBoundary(directoryUrl) {
   for (const entry of await readdir(directoryUrl, { withFileTypes: true })) {
     const entryUrl = new URL(entry.name, directoryUrl);
+    if (entry.isSymbolicLink()) {
+      throw new Error(`Symbolic links are not allowed in the Sites artifact: ${entry.name}`);
+    }
+
     if (entry.isDirectory()) {
       await assertPublicBoundary(new URL(`${entryUrl.href}/`));
       continue;
+    }
+
+    if (!entry.isFile()) {
+      throw new Error(`Unsupported entry in the Sites artifact: ${entry.name}`);
     }
 
     const content = await readFile(entryUrl);
@@ -62,5 +70,4 @@ async function assertPublicBoundary(directoryUrl) {
   }
 }
 
-await assertPublicBoundary(targetDirectory);
 globalThis.console.log("Validated Sites artifact and public/private deployment boundary.");
