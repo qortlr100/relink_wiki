@@ -2,6 +2,7 @@ import { createReadStream } from "node:fs";
 import { Buffer } from "node:buffer";
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
+import typescript from "typescript";
 
 const privateMarkers = [
   "RELINK_DATABASE_PATH",
@@ -76,14 +77,85 @@ export async function assertRequiredArtifactPaths(artifactDirectory) {
 /** @param {string} workerPath */
 export async function assertWorkerModuleSource(workerPath) {
   const source = await readFile(workerPath, "utf8");
-  const hasDefaultExport =
-    /\bexport\s+default\b/u.test(source) ||
-    /\bexport\s*\{[^}]*\bas\s+default\b[^}]*\}/u.test(source);
-  const hasFetchMethod = /\bfetch\s*(?:\([^)]*\)|:)\s*(?:\{|(?:async\s*)?function\b)/u.test(source);
+  const sourceFile = typescript.createSourceFile(
+    workerPath,
+    source,
+    typescript.ScriptTarget.Latest,
+    true,
+    typescript.ScriptKind.JS,
+  );
+  const variables = /** @type {Map<string, import("typescript").Expression>} */ (new Map());
 
-  if (!hasDefaultExport || !hasFetchMethod) {
+  for (const statement of sourceFile.statements) {
+    if (!typescript.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (typescript.isIdentifier(declaration.name) && declaration.initializer) {
+        variables.set(declaration.name.text, declaration.initializer);
+      }
+    }
+  }
+
+  const defaultExport = findDefaultExport(sourceFile, variables);
+  if (!defaultExport || !isWorkerObject(defaultExport, variables, new Set())) {
     throw new Error("Sites artifact must statically export a default Worker with a fetch handler");
   }
+}
+
+/**
+ * @param {import("typescript").SourceFile} sourceFile
+ * @param {Map<string, import("typescript").Expression>} variables
+ */
+function findDefaultExport(sourceFile, variables) {
+  for (const statement of sourceFile.statements) {
+    if (typescript.isExportAssignment(statement) && !statement.isExportEquals) {
+      return statement.expression;
+    }
+    if (!typescript.isExportDeclaration(statement) || !statement.exportClause) continue;
+    if (!typescript.isNamedExports(statement.exportClause)) continue;
+    for (const element of statement.exportClause.elements) {
+      if (element.name.text !== "default") continue;
+      const localName = element.propertyName?.text ?? element.name.text;
+      return variables.get(localName);
+    }
+  }
+  return undefined;
+}
+
+/**
+ * @param {import("typescript").Expression} expression
+ * @param {Map<string, import("typescript").Expression>} variables
+ * @param {Set<string>} visited
+ */
+function isWorkerObject(expression, variables, visited) {
+  if (typescript.isParenthesizedExpression(expression)) {
+    return isWorkerObject(expression.expression, variables, visited);
+  }
+  if (typescript.isIdentifier(expression)) {
+    if (visited.has(expression.text)) return false;
+    const initializer = variables.get(expression.text);
+    if (!initializer) return false;
+    visited.add(expression.text);
+    return isWorkerObject(initializer, variables, visited);
+  }
+  if (!typescript.isObjectLiteralExpression(expression)) return false;
+
+  return expression.properties.some((property) => {
+    const name = getPropertyName(property.name);
+    if (name !== "fetch") return false;
+    if (typescript.isMethodDeclaration(property)) return true;
+    if (!typescript.isPropertyAssignment(property)) return false;
+    return (
+      typescript.isArrowFunction(property.initializer) ||
+      typescript.isFunctionExpression(property.initializer)
+    );
+  });
+}
+
+/** @param {import("typescript").PropertyName | undefined} name */
+function getPropertyName(name) {
+  if (!name) return undefined;
+  if (typescript.isIdentifier(name) || typescript.isStringLiteral(name)) return name.text;
+  return undefined;
 }
 
 /**
