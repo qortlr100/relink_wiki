@@ -26,6 +26,15 @@ async function createArtifactDirectory() {
   return directory;
 }
 
+async function createWorkspaceDirectory(scopes = ["apps/*", "packages/*", "tools/*"]) {
+  const directory = await createArtifactDirectory();
+  await writeFile(
+    join(directory, "pnpm-workspace.yaml"),
+    `packages:\n${scopes.map((scope) => `  - ${scope}`).join("\n")}\n`,
+  );
+  return directory;
+}
+
 describe("Sites artifact contract", () => {
   it("accepts the complete required artifact layout", async () => {
     const artifactDirectory = await createArtifactDirectory();
@@ -102,7 +111,7 @@ describe("Sites artifact contract", () => {
   });
 
   it("rejects indirect private workspace dependencies", async () => {
-    const repositoryRoot = await createArtifactDirectory();
+    const repositoryRoot = await createWorkspaceDirectory();
     const workspaceManifests = /** @type {Array<[string, Record<string, unknown>]>} */ ([
       [
         "apps/wiki",
@@ -125,7 +134,7 @@ describe("Sites artifact contract", () => {
   });
 
   it("rejects relative source imports that escape the public wiki", async () => {
-    const repositoryRoot = await createArtifactDirectory();
+    const repositoryRoot = await createWorkspaceDirectory();
     await mkdir(join(repositoryRoot, "apps", "wiki", "src"), { recursive: true });
     await mkdir(join(repositoryRoot, "packages", "database"), { recursive: true });
     await writeFile(
@@ -142,12 +151,70 @@ describe("Sites artifact contract", () => {
     );
 
     await expect(assertWorkspaceDependencyBoundary(repositoryRoot)).rejects.toThrow(
-      "Public wiki source import escapes apps/wiki",
+      "Public workspace source import escapes package boundary",
     );
   });
 
+  it("rejects relative source imports from transitive public packages", async () => {
+    const repositoryRoot = await createWorkspaceDirectory();
+    await mkdir(join(repositoryRoot, "apps", "wiki"), { recursive: true });
+    await mkdir(join(repositoryRoot, "packages", "domain", "src"), { recursive: true });
+    await mkdir(join(repositoryRoot, "packages", "database"), { recursive: true });
+    await writeFile(
+      join(repositoryRoot, "apps", "wiki", "package.json"),
+      JSON.stringify({
+        name: "@relink-wiki/wiki",
+        dependencies: { "@relink-wiki/domain": "workspace:*" },
+      }),
+    );
+    await writeFile(
+      join(repositoryRoot, "packages", "domain", "package.json"),
+      JSON.stringify({ name: "@relink-wiki/domain" }),
+    );
+    await writeFile(
+      join(repositoryRoot, "packages", "database", "package.json"),
+      JSON.stringify({ name: "@relink-wiki/database" }),
+    );
+    await writeFile(
+      join(repositoryRoot, "packages", "domain", "src", "schema.ts"),
+      'import { database } from "../../database/src/client";',
+    );
+
+    await expect(assertWorkspaceDependencyBoundary(repositoryRoot)).rejects.toThrow(
+      "source import escapes",
+    );
+  });
+
+  it("rejects template-literal dynamic imports that escape a public package", async () => {
+    const repositoryRoot = await createWorkspaceDirectory();
+    await mkdir(join(repositoryRoot, "apps", "wiki", "src"), { recursive: true });
+    await writeFile(
+      join(repositoryRoot, "apps", "wiki", "package.json"),
+      JSON.stringify({ name: "@relink-wiki/wiki" }),
+    );
+    await writeFile(
+      join(repositoryRoot, "apps", "wiki", "src", "page.ts"),
+      "void import(`../../../packages/database/src/client`);",
+    );
+
+    await expect(assertWorkspaceDependencyBoundary(repositoryRoot)).rejects.toThrow(
+      "source import escapes",
+    );
+  });
+
+  it("derives package scopes from pnpm-workspace.yaml", async () => {
+    const repositoryRoot = await createWorkspaceDirectory(["services/*"]);
+    await mkdir(join(repositoryRoot, "services", "wiki"), { recursive: true });
+    await writeFile(
+      join(repositoryRoot, "services", "wiki", "package.json"),
+      JSON.stringify({ name: "@relink-wiki/wiki" }),
+    );
+
+    await expect(assertWorkspaceDependencyBoundary(repositoryRoot)).resolves.toEqual([]);
+  });
+
   it("derives artifact markers from non-public workspace packages", async () => {
-    const repositoryRoot = await createArtifactDirectory();
+    const repositoryRoot = await createWorkspaceDirectory();
     await mkdir(join(repositoryRoot, "apps", "wiki"), { recursive: true });
     await mkdir(join(repositoryRoot, "tools", "extractor"), { recursive: true });
     await writeFile(
