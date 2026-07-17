@@ -10,6 +10,7 @@
     "dev": "npm --prefix apps/wiki run dev --",
     "dev:wiki": "pnpm --filter @relink-wiki/wiki dev",
     "dev:admin": "pnpm --filter @relink-wiki/mining-admin dev",
+    "publish:public": "pnpm --filter @relink-wiki/publisher run publish",
     "preview:public": "pnpm --filter @relink-wiki/publisher preview",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

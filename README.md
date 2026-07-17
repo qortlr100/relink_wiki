@@ -4,11 +4,11 @@ Granblue Fantasy: Relink 데이터를 로컬에서 추출·검수하고, 승인�
 
 ## 현재 구현 범위
 
-- 공개 위키는 검증된 버전 1 정적 JSON 스냅샷에서 캐릭터, 무기, 진, 스킬의 검색·목록·상세 화면을 제공합니다. 저장소에 포함된 스냅샷은 UI 검증용 샘플이며 실제 게임 데이터 발행본이 아닙니다.
+- 공개 위키는 검증된 버전 1 정적 JSON 스냅샷에서 캐릭터, 무기, 진, 스킬의 검색·목록·상세 화면을 제공합니다. 저장소에는 로컬 publication을 완료한 실제 schema v1 스냅샷 1,681건이 포함되어 있습니다. 추출 결과는 그대로 보존하되 아직 독자용 표현 계약이 없는 `character-pl000b` 한 건은 프론트엔드 탐색에서만 제외하므로 현재 검색·목록·상세 UI에는 1,680건이 노출됩니다. Sites checkpoint 생성과 공개 접근 전환은 별도 단계입니다.
 - 로컬 마이닝 관리 도구는 `127.0.0.1:3100`에만 바인딩되며, `RELINK_DATABASE_PATH`의 SQLite를 읽기 전용으로 열어 normalization 실행, 현재 baseline, 백업 증빙, review state, publication 및 allowlist 미리보기 현황을 표시합니다. 승인·발행 쓰기와 레코드별 검수 UI는 아직 연결되지 않았습니다.
 - 추출기 패키지는 GBFRDataTools `2.0.0` 실행 전 점검, 후보 SQLite의 private staging import, 한국어 메시지 조인 검증, 검수용 mapping 후보 생성과 명시적 매핑 기반 normalization을 지원합니다.
-- 데이터베이스 패키지는 두 private normalization 실행의 공개 후보 필드를 읽기 전용으로 비교하고, NAS 백업 증빙과 baseline 동시성 확인을 거친 명시적 승인을 영속화합니다. publisher 패키지는 승인된 baseline에서 allowlist 공개 DTO와 검증 가능한 manifest 미리보기를 만들고, 별도의 명시적 호출에서 백업·현재 리비전 gate를 거쳐 version 1 JSON 파일을 원자적으로 교체·재검증합니다. 검증된 쓰기 결과는 immutable publication 이력과 현재 포인터로 기록되며 해당 baseline은 한 SQLite transaction에서 `published`로 전환됩니다. 관리 UI와 거절 검수는 다음 구현 범위입니다.
-- 공개 위키 빌드는 Sites용 Worker와 정적 자산만 루트 `dist/`에 패키징하고, 관리 앱·SQLite·로컬 경로 표식이 산출물에 포함되지 않았는지 검사합니다. 현재 저장소의 샘플 스냅샷은 배포 경로 검증용이며 실제 데이터 공개본이 아닙니다.
+- 데이터베이스 패키지는 두 private normalization 실행의 공개 후보 필드를 읽기 전용으로 비교하고, NAS 백업 증빙과 baseline 동시성 확인을 거친 명시적 승인을 영속화합니다. publisher 패키지는 승인된 baseline에서 allowlist 공개 DTO와 검증 가능한 manifest 미리보기를 만들며, 검토 파일의 전체 SHA-256과 명시적 확인 토큰을 고정한 로컬 발행 요청으로 version 1 JSON 후보 쓰기와 publication DB transaction을 연결합니다. 관리 UI, 거절 검수와 rollback은 다음 구현 범위입니다.
+- 공개 위키 빌드는 Sites용 Worker와 정적 자산만 루트 `dist/`에 패키징하고, 관리 앱·SQLite·로컬 경로 표식이 산출물에 포함되지 않았는지 검사합니다. 현재 저장소의 실제 스냅샷은 이 경계를 통과했지만 아직 Sites checkpoint나 공개 배포본으로 전환되지 않았습니다.
 
 ## 요구 사항
 
@@ -81,7 +81,19 @@ pnpm --filter @relink-wiki/extractor normalize:mapped
 
 정규화 실행 승인, NAS 백업 증빙과 스키마 버전별 baseline 계약은 [`docs/normalization-review.md`](docs/normalization-review.md)를 참고하세요. 승인은 레코드를 `reviewed`로 전환하지만 공개 스냅샷을 만들거나 발행하지 않습니다.
 
-승인된 baseline에서 공개 가능한 필드만 추려 manifest 미리보기를 만들고 이를 검증된 version 1 JSON 후보 파일로 쓰는 계약은 [`docs/publication-preview.md`](docs/publication-preview.md)를 참고하세요. 파일 쓰기 후 publication 이력과 `published` 상태 전환을 원자적으로 완료하는 DB 계약은 [`docs/publication-history.md`](docs/publication-history.md)를 참고하세요. 두 호출 모두 명시적이며 Sites 배포를 수행하지 않습니다.
+승인된 baseline에서 공개 가능한 필드만 추려 manifest 미리보기를 생성하려면 비공개 셸에서 실행합니다.
+
+```bash
+pnpm preview:public
+```
+
+사람이 검토한 미리보기의 전체 파일 SHA-256과 content revision, 고정 publication UUID, 새 NAS 백업 증빙, 출력 디렉터리 및 시각을 private 요청 JSON에 기록한 뒤 `RELINK_PUBLICATION_REQUEST_PATH`로 가리키고 명시적으로 실행합니다.
+
+```bash
+pnpm publish:public
+```
+
+명령은 확인 토큰 `PUBLISH_REVIEWED_PUBLIC_SNAPSHOT_V1`이 있는 요청만 허용하고, 검토 파일이 바뀌지 않았는지 확인한 뒤 후보 쓰기와 publication 이력 및 `published` 상태 전환을 연결합니다. 동일 요청은 응답 유실 후에도 그대로 재실행할 수 있습니다. 전체 요청 계약은 [`docs/publication-preview.md`](docs/publication-preview.md), DB 완료 계약은 [`docs/publication-history.md`](docs/publication-history.md)를 참고하세요. 이 명령은 체크인 스냅샷 교체나 Sites 배포를 수행하지 않습니다.
 
 Sites 빌드 산출물, 배포 전 경계 검사와 실제 스냅샷 발행 분리는 [`docs/sites-deployment.md`](docs/sites-deployment.md)를 참고하세요. 구현 상태와 public/private 경계는 [`docs/architecture.md`](docs/architecture.md), 전체 개발 기준선과 단계별 상태는 [`docs/development-baseline.md`](docs/development-baseline.md)를 참고하세요.
 

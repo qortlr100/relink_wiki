@@ -18,8 +18,16 @@ export type CatalogRecord = PublicRecord & {
   categoryLabel: string;
 };
 
+// Preserve extracted rows in the public snapshot while withholding records that do not yet have a
+// meaningful reader-facing presentation contract from archive navigation.
+const hiddenCatalogRecordIds = new Set<string>(["character-pl000b"]);
+
+export function getCategoryRecords(categoryKey: CategoryKey) {
+  return publicSnapshot[categoryKey].filter((record) => !hiddenCatalogRecordIds.has(record.id));
+}
+
 export const catalogRecords: CatalogRecord[] = categories.flatMap((category) =>
-  publicSnapshot[category.key].map((record) => ({
+  getCategoryRecords(category.key).map((record) => ({
     ...record,
     categoryKey: category.key,
     categoryLabel: category.label,
@@ -39,7 +47,7 @@ export function getCategory(categoryKey: CategoryKey) {
 }
 
 export function getRecord(categoryKey: CategoryKey, slug: string) {
-  return publicSnapshot[categoryKey].find((record) => record.slug === slug);
+  return getCategoryRecords(categoryKey).find((record) => record.slug === slug);
 }
 
 export function getRecordHref(record: Pick<CatalogRecord, "categoryKey" | "slug">) {

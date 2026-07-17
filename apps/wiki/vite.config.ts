@@ -63,7 +63,9 @@ export default defineConfig(async () => {
         inspectorPort: false,
         config: {
           main: "./worker/index.ts",
-          compatibility_date: "2026-07-16",
+          // Keep local Miniflare and the deployed Worker on the newest date supported
+          // by the pinned workerd runtime instead of advancing with the wall clock.
+          compatibility_date: "2026-05-22",
           compatibility_flags: ["nodejs_compat"],
         },
       }),

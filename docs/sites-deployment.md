@@ -20,6 +20,8 @@ The marker scan is a defense-in-depth check, not proof that semantically equival
 
 The root packager copies the Wiki build to a staging directory, validates it there, and renames it to `dist/` only after every contract check passes. Any failure removes both staging and final output paths so an invalid or stale artifact cannot be uploaded by a later step that ignores the failed command's exit status.
 
+The Worker compatibility date is pinned to `2026-05-22`, the newest date supported by the repository's pinned workerd runtime. Advancing this date requires updating and validating the runtime together; it must not follow the wall clock automatically.
+
 The packaging script parses the boundary-checked Worker as JavaScript without importing or executing it. It resolves the emitted ESM default export to its object literal and verifies that the exported object owns a method, function, or arrow-function `fetch` handler. This is a structural check rather than a Cloudflare Workers runtime test; the immutable Sites checkpoint build and deployment status remain the hosted-runtime verification step.
 
 The root `dev` command delegates through `npm --prefix apps/wiki` so Sites agent preview can start without a separately exposed `pnpm` executable while package-local script resolution still selects the wiki's declared Vite dependency.
@@ -33,7 +35,7 @@ The Sites lifecycle may create `.sites-runtime/` for local package-manager and c
 - The build must not read the local database or publisher output directory.
 - A Sites checkpoint never performs extraction, review, snapshot publication, or database state transition.
 
-The current checked-in snapshot is prototype sample data. A private checkpoint can verify routing, rendering, artifact integrity, and the hosting path, but it is not the actual public data release.
+The current checked-in snapshot is the explicitly reviewed schema version 1 publication with 1,681 records. It has passed the local artifact boundary gate, but it is not a Sites release until a new private checkpoint is created and its deployed identity and content are confirmed. Public access remains a separate decision.
 
 ## Release sequence
 
