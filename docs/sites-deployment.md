@@ -35,7 +35,23 @@ The Sites lifecycle may create `.sites-runtime/` for local package-manager and c
 - The build must not read the local database or publisher output directory.
 - A Sites checkpoint never performs extraction, review, snapshot publication, or database state transition.
 
-The current checked-in snapshot is the explicitly reviewed schema version 1 publication with 1,681 records. It has passed the local artifact boundary gate, but it is not a Sites release until a new private checkpoint is created and its deployed identity and content are confirmed. Public access remains a separate decision.
+The current checked-in snapshot is the explicitly reviewed schema version 1 publication with 1,681 records. On 2026-07-17, the current Sites public origin served the same content revision `7a9617732a647eb42202210936c61cfad4c0c15f7c327904c583261004869241` with 35 characters, 361 weapons, 1,023 sigils and 262 skills. This confirms the actual release rather than only the local artifact.
+
+## Deployed snapshot verification
+
+Run the verifier after a checkpoint deployment or rollback:
+
+```bash
+pnpm site:verify -- https://relink-wiki.cid100.chatgpt.site
+```
+
+The command accepts only an HTTPS origin without credentials, a path, query or fragment. It fetches `/data/public-snapshot.v1.json` with a size limit, parses the expected and deployed files, and requires their complete JSON values to match. Success output contains only `SITE_DEPLOYMENT_VERIFIED`, the schema version, content revision and category counts. Provider response bodies, local paths and record values are not printed on failure.
+
+The default expected file is the checked-in `apps/wiki/public/data/public-snapshot.v1.json`. To verify a restored checkpoint, preserve the reviewed snapshot from that saved version in a temporary operator-controlled location and pass it explicitly:
+
+```bash
+pnpm site:verify -- https://relink-wiki.cid100.chatgpt.site --expected-snapshot <file>
+```
 
 ## Release sequence
 
@@ -45,4 +61,16 @@ The current checked-in snapshot is the explicitly reviewed schema version 1 publ
 4. Create and verify an immutable Sites checkpoint.
 5. Widen access only after the deployed snapshot identity and public content are confirmed.
 
-Actual snapshot rollback and restoration of a previous public checkpoint remain follow-up operational work.
+The current schema version 1 publication has completed this sequence.
+
+## Rollback sequence
+
+1. Record the current live Sites version and its source commit before changing production.
+2. Select the previous immutable Sites version and recover its exact reviewed snapshot from the same source commit. Do not use an untracked local export as the expected value.
+3. Run the full repository checks for that source and confirm the public/private artifact boundary.
+4. Obtain explicit approval for the production change. A public Sites project cannot create an owner-only deployment of an older version; deploying the saved version changes the public origin immediately.
+5. Deploy the selected saved version, then run `site:verify` against its recovered reviewed snapshot.
+6. If deployment or verification fails, redeploy the version recorded in step 1 and verify it against its own reviewed snapshot.
+7. Record both the selected version and verification result in the Notion work log. Never delete either checkpoint or its NAS backup evidence.
+
+On 2026-07-17, the verifier passed against the current public release. A non-disruptive private deployment of the previous version was rejected because the project is already public, so the live rollback transition was intentionally not performed without a separate approval and maintenance window.
