@@ -4,11 +4,11 @@ Granblue Fantasy: Relink 데이터를 로컬에서 추출·검수하고, 승인�
 
 ## 현재 구현 범위
 
-- 공개 위키는 검증된 버전 1 정적 JSON 스냅샷에서 캐릭터, 무기, 진, 스킬의 검색·목록·상세 화면을 제공합니다. 저장소에는 로컬 publication을 완료한 실제 schema v1 스냅샷 1,681건이 포함되어 있습니다. 추출 결과는 그대로 보존하되 아직 독자용 표현 계약이 없는 `character-pl000b` 한 건은 프론트엔드 탐색에서만 제외하므로 현재 검색·목록·상세 UI에는 1,680건이 노출됩니다. Sites checkpoint 생성과 공개 접근 전환은 별도 단계입니다.
+- 공개 위키는 검증된 버전 1 정적 JSON 스냅샷에서 캐릭터, 무기, 진, 스킬의 검색·목록·상세 화면을 제공합니다. 저장소와 [현재 Sites 공개본](https://relink-wiki.cid100.chatgpt.site)에는 로컬 publication을 완료한 실제 schema v1 스냅샷 1,681건이 포함되어 있습니다. 추출 결과는 그대로 보존하되 아직 독자용 표현 계약이 없는 `character-pl000b` 한 건은 프론트엔드 탐색에서만 제외하므로 현재 검색·목록·상세 UI에는 1,680건이 노출됩니다.
 - 로컬 마이닝 관리 도구는 `127.0.0.1:3100`에만 바인딩되며, `RELINK_DATABASE_PATH`의 SQLite를 읽기 전용으로 열어 normalization 실행, 현재 baseline, 백업 증빙, review state, publication 및 allowlist 미리보기 현황을 표시합니다. 승인·발행 쓰기와 레코드별 검수 UI는 아직 연결되지 않았습니다.
 - 추출기 패키지는 GBFRDataTools `2.0.0` 실행 전 점검, 후보 SQLite의 private staging import, 한국어 메시지 조인 검증, 검수용 mapping 후보 생성과 명시적 매핑 기반 normalization을 지원합니다.
 - 데이터베이스 패키지는 두 private normalization 실행의 공개 후보 필드를 읽기 전용으로 비교하고, NAS 백업 증빙과 baseline 동시성 확인을 거친 명시적 승인을 영속화합니다. publisher 패키지는 승인된 baseline에서 allowlist 공개 DTO와 검증 가능한 manifest 미리보기를 만들며, 검토 파일의 전체 SHA-256과 명시적 확인 토큰을 고정한 로컬 발행 요청으로 version 1 JSON 후보 쓰기와 publication DB transaction을 연결합니다. 관리 UI, 거절 검수와 rollback은 다음 구현 범위입니다.
-- 공개 위키 빌드는 Sites용 Worker와 정적 자산만 루트 `dist/`에 패키징하고, 관리 앱·SQLite·로컬 경로 표식이 산출물에 포함되지 않았는지 검사합니다. 현재 저장소의 실제 스냅샷은 이 경계를 통과했지만 아직 Sites checkpoint나 공개 배포본으로 전환되지 않았습니다.
+- 공개 위키 빌드는 Sites용 Worker와 정적 자산만 루트 `dist/`에 패키징하고, 관리 앱·SQLite·로컬 경로 표식이 산출물에 포함되지 않았는지 검사합니다. 현재 실제 스냅샷은 이 경계를 통과해 Sites에 공개됐으며, 저장소의 검토 파일과 배포본의 전체 JSON 일치 여부를 별도 명령으로 확인할 수 있습니다. 이전 체크포인트로 실제 전환하는 rollback 훈련은 명시적 운영 승인 후 수행합니다.
 
 ## 요구 사항
 
@@ -96,6 +96,14 @@ pnpm publish:public
 명령은 확인 토큰 `PUBLISH_REVIEWED_PUBLIC_SNAPSHOT_V1`이 있는 요청만 허용하고, 검토 파일이 바뀌지 않았는지 확인한 뒤 후보 쓰기와 publication 이력 및 `published` 상태 전환을 연결합니다. 동일 요청은 응답 유실 후에도 그대로 재실행할 수 있습니다. 전체 요청 계약은 [`docs/publication-preview.md`](docs/publication-preview.md), DB 완료 계약은 [`docs/publication-history.md`](docs/publication-history.md)를 참고하세요. 이 명령은 체크인 스냅샷 교체나 Sites 배포를 수행하지 않습니다.
 
 Sites 빌드 산출물, 배포 전 경계 검사와 실제 스냅샷 발행 분리는 [`docs/sites-deployment.md`](docs/sites-deployment.md)를 참고하세요. 구현 상태와 public/private 경계는 [`docs/architecture.md`](docs/architecture.md), 전체 개발 기준선과 단계별 상태는 [`docs/development-baseline.md`](docs/development-baseline.md)를 참고하세요.
+
+현재 Sites 공개본이 체크인된 검토 스냅샷과 정확히 일치하는지 확인하려면 실행합니다.
+
+```bash
+pnpm site:verify -- https://relink-wiki.cid100.chatgpt.site
+```
+
+이 명령은 HTTPS 공개 origin의 version 1 JSON만 읽고 체크인 파일과 전체 구조를 비교한 뒤 schema version, content revision과 카테고리별 수량만 출력합니다. 다른 체크포인트를 복구 검증할 때는 그 버전에서 보존한 검토 파일을 `--expected-snapshot <file>`로 지정합니다.
 
 ## 검증
 

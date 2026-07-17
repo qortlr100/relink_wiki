@@ -19,6 +19,7 @@
     "test": "vitest run",
     "build": "corepack pnpm -r build && corepack pnpm site:package",
     "site:package": "node scripts/package-site-artifact.mjs",
+    "site:verify": "node scripts/verify-site-deployment.mjs",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {

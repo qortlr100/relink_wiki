@@ -63,8 +63,8 @@ Each stage has a separate input/output contract. The current repository status i
 | **normalize** | Implemented | Generates a private review candidate from canonical resolved localization joins, then maps only the explicitly reviewed JSON into versioned `staged` records.                     |
 | **diff**      | Implemented | A read-only engine compares two compatible private normalization runs with deterministic, allowlisted results.                                                                    |
 | **review**    | Partial     | Explicit run acceptance persists backup evidence and one baseline per schema version; the local admin shows read-only aggregate status, while rejection and write actions remain. |
-| **publish**   | Partial     | Local publication and checked-in actual schema v1 snapshot are complete; mining-admin write controls, Sites release and rollback remain.                                          |
-| **verify**    | Partial     | The actual snapshot passes domain, wiki, publisher and Sites artifact boundary checks; a browser visual pass, actual Sites checkpoint and rollback verification remain.           |
+| **publish**   | Partial     | Local publication, checked-in schema v1 snapshot and the actual Sites release are complete; mining-admin write controls and rollback remain.                                      |
+| **verify**    | Partial     | The actual snapshot passes automated boundaries, browser checks and complete deployed-JSON comparison; a live rollback transition still requires explicit approval and rehearsal. |
 
 Stages must be independently repeatable and must not infer success from file existence alone.
 
@@ -88,7 +88,7 @@ The publisher preview reads only the accepted schema-version baseline, requires 
 
 ## Sites deployment contract
 
-The repository-root `build` keeps the complete workspace build and then copies only the `apps/wiki` Sites Worker, static assets, and hosting manifest into the root `dist/` artifact. The packaging gate parses the hosting manifest, scans every emitted file for known mining-admin, SQLite, and local-path markers, and only then imports the emitted Worker to require `default.fetch`. The checked-in publication is ready for a separately approved private deployment checkpoint; it is not a deployed public release until that checkpoint and access transition are verified. See [`sites-deployment.md`](sites-deployment.md).
+The repository-root `build` keeps the complete workspace build and then copies only the `apps/wiki` Sites Worker, static assets, and hosting manifest into the root `dist/` artifact. The packaging gate parses the hosting manifest, scans every emitted file for known mining-admin, SQLite, and local-path markers, and then statically verifies that the Worker default export owns a `fetch` handler without executing the emitted module. The reviewed schema version 1 snapshot is deployed at the current public Sites origin. `site:verify` reads only its public JSON endpoint and requires the complete parsed value to match the expected reviewed snapshot before reporting the schema version, content revision and category counts. See [`sites-deployment.md`](sites-deployment.md).
 
 The project does not maintain a normal game-version history because it targets the expected final content state. If a development-time game transition changes extraction or normalized semantics, record a one-off compatibility label on that import rather than introducing a permanent version catalog.
 
