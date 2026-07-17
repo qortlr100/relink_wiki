@@ -25,6 +25,8 @@ The review workspace compares the current schema version 1 accepted baseline wit
 
 Each decision form posts the comparison fingerprint and a required decimal array position rather than an internal run or source identifier. Empty or non-decimal positions are rejected instead of being coerced to record zero. An immediate SQLite transaction rebuilds the complete current comparison, rejects stale fingerprints and resolves the private record key before persisting `approved` or `rejected`, an optional 500-character note, and the decision time. A newer staged candidate or changed baseline invalidates an older screen, and another connection cannot replace that candidate between the freshness check and decision write.
 
+Decision, acceptance, and publication forms also post the current review filter and page as navigation-only values. Server redirects allowlist those values and return to the same filtered page when it still exists; invalid or inherited keys fall back to the unfiltered first page.
+
 The acceptance form is rendered only after pending and rejected counts both reach zero. It requires path-free NAS backup evidence and exact confirmation `ACCEPT_FULLY_REVIEWED_NORMALIZATION_V1`. An immediate SQLite transaction rebuilds the comparison and decision summary before the nested acceptance write, so another connection cannot change a decision between the gate and the expected-baseline/state transition.
 
 ## Publication action

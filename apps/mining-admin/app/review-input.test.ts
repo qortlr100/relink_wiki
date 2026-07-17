@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasOwnKey, recordIndexFormSchema } from "./review-input";
+import { buildReviewNoticeHref, hasOwnKey, recordIndexFormSchema } from "./review-input";
 
 describe("review input validation", () => {
   it("accepts only a non-empty decimal record index", () => {
@@ -19,5 +19,25 @@ describe("review input validation", () => {
     expect(hasOwnKey(labels, "constructor")).toBe(false);
     expect(hasOwnKey(labels, "toString")).toBe(false);
     expect(hasOwnKey(labels, undefined)).toBe(false);
+  });
+
+  it("builds a safe notice URL that preserves valid review navigation", () => {
+    expect(
+      buildReviewNoticeHref("decision_saved", {
+        category: "skill",
+        diff: "changed",
+        decision: "pending",
+        page: "3",
+      }),
+    ).toBe("/?notice=decision_saved&category=skill&diff=changed&decision=pending&page=3#review");
+
+    expect(
+      buildReviewNoticeHref("review_input_invalid", {
+        category: "__proto__",
+        diff: "constructor",
+        decision: "unknown",
+        page: "0",
+      }),
+    ).toBe("/?notice=review_input_invalid#review");
   });
 });

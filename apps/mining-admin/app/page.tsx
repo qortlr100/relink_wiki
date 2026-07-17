@@ -24,6 +24,17 @@ interface ReviewFilters {
   page: number;
 }
 
+function ReviewNavigationFields({ filters }: Readonly<{ filters: ReviewFilters }>) {
+  return (
+    <>
+      <input type="hidden" name="returnCategory" value={filters.category} />
+      <input type="hidden" name="returnDiff" value={filters.diff} />
+      <input type="hidden" name="returnDecision" value={filters.decision} />
+      <input type="hidden" name="returnPage" value={filters.page} />
+    </>
+  );
+}
+
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("ko-KR", {
     dateStyle: "medium",
@@ -237,6 +248,7 @@ function ReviewPanel({
                 <RecordValue label="최신 후보" value={record.candidate} />
               </div>
               <form action={saveRecordDecisionAction} className="decision-form">
+                <ReviewNavigationFields filters={{ ...filters, page: currentPage }} />
                 <input
                   type="hidden"
                   name="comparisonFingerprint"
@@ -286,7 +298,12 @@ function ReviewPanel({
 function OperationPanel({
   review,
   preview,
-}: Readonly<{ review: DashboardReview; preview: DashboardPreview }>) {
+  filters,
+}: Readonly<{
+  review: DashboardReview;
+  preview: DashboardPreview;
+  filters: ReviewFilters;
+}>) {
   const readyReview = review.status === "ready" ? review : null;
   return (
     <div className="operation-grid">
@@ -306,6 +323,7 @@ function OperationPanel({
           </p>
         ) : (
           <form action={acceptCandidateAction} className="operation-form">
+            <ReviewNavigationFields filters={filters} />
             <input
               type="hidden"
               name="comparisonFingerprint"
@@ -348,6 +366,7 @@ function OperationPanel({
           <p className="operation-gate">{preview.message}</p>
         ) : (
           <form action={publishSnapshotAction} className="operation-form">
+            <ReviewNavigationFields filters={filters} />
             <p className="revision-preview">
               대상 리비전 <HashValue>{preview.contentRevision}</HashValue>
             </p>
@@ -535,7 +554,7 @@ export default async function Home({
           </div>
           <span className="status-badge warning">명시적 확인 필요</span>
         </div>
-        <OperationPanel review={review} preview={preview} />
+        <OperationPanel review={review} preview={preview} filters={filters} />
       </section>
 
       <section className="panel" aria-labelledby="runs-title">

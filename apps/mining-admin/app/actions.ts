@@ -12,7 +12,7 @@ import {
 } from "@relink-wiki/publisher";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { recordIndexFormSchema } from "./review-input";
+import { buildReviewNoticeHref, recordIndexFormSchema } from "./review-input";
 
 const fingerprintSchema = z.string().regex(/^[0-9a-f]{64}$/);
 const sha256Schema = z.string().regex(/^[0-9a-f]{64}$/);
@@ -43,8 +43,15 @@ function formText(formData: FormData, key: string): string {
   return typeof value === "string" ? value : "";
 }
 
-function redirectToNotice(notice: string): never {
-  redirect(`/?notice=${encodeURIComponent(notice)}#review`);
+function redirectToNotice(notice: string, formData: FormData): never {
+  redirect(
+    buildReviewNoticeHref(notice, {
+      category: formText(formData, "returnCategory"),
+      diff: formText(formData, "returnDiff"),
+      decision: formText(formData, "returnDecision"),
+      page: formText(formData, "returnPage"),
+    }),
+  );
 }
 
 function reviewErrorNotice(error: unknown): string {
@@ -71,7 +78,7 @@ function reviewErrorNotice(error: unknown): string {
 export async function saveRecordDecisionAction(formData: FormData): Promise<void> {
   const databasePath = process.env.RELINK_DATABASE_PATH?.trim();
   if (!databasePath) {
-    redirectToNotice("database_unset");
+    redirectToNotice("database_unset", formData);
   }
   const validation = decisionFormSchema.safeParse({
     comparisonFingerprint: formText(formData, "comparisonFingerprint"),
@@ -80,7 +87,7 @@ export async function saveRecordDecisionAction(formData: FormData): Promise<void
     note: formText(formData, "note"),
   });
   if (!validation.success) {
-    redirectToNotice("review_input_invalid");
+    redirectToNotice("review_input_invalid", formData);
   }
 
   let notice = "decision_saved";
@@ -97,14 +104,14 @@ export async function saveRecordDecisionAction(formData: FormData): Promise<void
   } finally {
     connection?.sqlite.close();
   }
-  redirectToNotice(notice);
+  redirectToNotice(notice, formData);
 }
 
 // eslint-disable-next-line @typescript-eslint/require-await
 export async function acceptCandidateAction(formData: FormData): Promise<void> {
   const databasePath = process.env.RELINK_DATABASE_PATH?.trim();
   if (!databasePath) {
-    redirectToNotice("database_unset");
+    redirectToNotice("database_unset", formData);
   }
   const validation = acceptanceFormSchema.safeParse({
     comparisonFingerprint: formText(formData, "comparisonFingerprint"),
@@ -114,7 +121,7 @@ export async function acceptCandidateAction(formData: FormData): Promise<void> {
     backupSha256: formText(formData, "backupSha256"),
   });
   if (!validation.success) {
-    redirectToNotice("acceptance_input_invalid");
+    redirectToNotice("acceptance_input_invalid", formData);
   }
 
   let notice = "candidate_accepted";
@@ -135,7 +142,7 @@ export async function acceptCandidateAction(formData: FormData): Promise<void> {
   } finally {
     connection?.sqlite.close();
   }
-  redirectToNotice(notice);
+  redirectToNotice(notice, formData);
 }
 
 // eslint-disable-next-line @typescript-eslint/require-await
@@ -143,13 +150,13 @@ export async function publishSnapshotAction(formData: FormData): Promise<void> {
   const databasePath = process.env.RELINK_DATABASE_PATH?.trim();
   const requestPath = process.env.RELINK_PUBLICATION_REQUEST_PATH?.trim();
   if (!databasePath || !requestPath) {
-    redirectToNotice("publication_environment_unset");
+    redirectToNotice("publication_environment_unset", formData);
   }
   const validation = publicationFormSchema.safeParse({
     confirmation: formText(formData, "confirmation"),
   });
   if (!validation.success) {
-    redirectToNotice("publication_confirmation_invalid");
+    redirectToNotice("publication_confirmation_invalid", formData);
   }
 
   let notice = "publication_completed";
@@ -161,5 +168,5 @@ export async function publishSnapshotAction(formData: FormData): Promise<void> {
         ? "publication_request_invalid"
         : "publication_failed";
   }
-  redirectToNotice(notice);
+  redirectToNotice(notice, formData);
 }
