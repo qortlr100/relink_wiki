@@ -30,6 +30,8 @@ const acceptNormalizationRunInputSchema = z
 
 const schemaVersionInputSchema = z.int().positive();
 type RelinkDatabase = ReturnType<typeof openDatabase>["db"];
+type RelinkTransaction = Parameters<Parameters<RelinkDatabase["transaction"]>[0]>[0];
+type RelinkDatabaseExecutor = RelinkDatabase | RelinkTransaction;
 
 export type NormalizationReviewErrorCode =
   | "NORMALIZATION_REVIEW_INPUT_INVALID"
@@ -83,7 +85,7 @@ function toBaseline(
 }
 
 export function getAcceptedNormalizationBaseline(
-  db: RelinkDatabase,
+  db: RelinkDatabaseExecutor,
   schemaVersion: unknown,
 ): AcceptedNormalizationBaseline | null {
   const validation = schemaVersionInputSchema.safeParse(schemaVersion);
@@ -102,7 +104,7 @@ export function getAcceptedNormalizationBaseline(
 }
 
 export function acceptNormalizationRun(
-  db: RelinkDatabase,
+  db: RelinkDatabaseExecutor,
   input: unknown,
 ): AcceptNormalizationRunResult {
   const validation = acceptNormalizationRunInputSchema.safeParse(input);

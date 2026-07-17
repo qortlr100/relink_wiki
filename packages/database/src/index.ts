@@ -25,6 +25,14 @@ export function openDatabase(input: unknown) {
   return { sqlite, db: drizzle(sqlite, { schema }) };
 }
 
+export function openExistingDatabase(input: unknown) {
+  const config = databaseConfigSchema.parse(input);
+  const sqlite = new Database(config.path, { fileMustExist: true });
+  sqlite.pragma("foreign_keys = ON");
+  sqlite.pragma("busy_timeout = 5000");
+  return { sqlite, db: drizzle(sqlite, { schema }) };
+}
+
 export function openReadonlyDatabase(input: unknown) {
   const config = databaseConfigSchema.parse(input);
   const sqlite = new Database(config.path, { fileMustExist: true, readonly: true });

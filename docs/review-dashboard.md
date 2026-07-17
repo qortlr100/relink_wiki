@@ -4,7 +4,7 @@ The mining admin exposes a status dashboard and explicit review operations for t
 
 ## Read boundary
 
-Page rendering opens an existing database with SQLite `readonly`, `fileMustExist`, and `query_only` settings. It never creates a missing database or applies migrations. A record decision or baseline approval server action opens a short writable connection only after validating its FormData and closes it before redirecting to a safe result notice. The database repository returns only:
+Page rendering opens an existing database with SQLite `readonly`, `fileMustExist`, and `query_only` settings. It never creates a missing database or applies migrations. A record decision or baseline approval server action uses a separate `fileMustExist` writable opener only after validating its FormData, so an incorrect path cannot create an empty SQLite file. The connection closes before redirecting to a safe result notice. The database repository returns only:
 
 - normalization timestamps and schema versions;
 - category and review-state counts;
@@ -25,7 +25,7 @@ The review workspace compares the current schema version 1 accepted baseline wit
 
 Each decision form posts the comparison fingerprint and array position rather than an internal run or source identifier. The server rebuilds the complete current comparison, rejects stale fingerprints and resolves the private record key before persisting `approved` or `rejected`, an optional 500-character note, and the decision time. A newer staged candidate or changed baseline invalidates an older screen.
 
-The acceptance form is rendered only after pending and rejected counts both reach zero. It requires path-free NAS backup evidence and exact confirmation `ACCEPT_FULLY_REVIEWED_NORMALIZATION_V1`. The database acceptance transaction still owns the expected-baseline concurrency check and record-state transition.
+The acceptance form is rendered only after pending and rejected counts both reach zero. It requires path-free NAS backup evidence and exact confirmation `ACCEPT_FULLY_REVIEWED_NORMALIZATION_V1`. An immediate SQLite transaction rebuilds the comparison and decision summary before the nested acceptance write, so another connection cannot change a decision between the gate and the expected-baseline/state transition.
 
 ## Publication action
 

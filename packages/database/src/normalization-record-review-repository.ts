@@ -105,6 +105,8 @@ const reviewWorkspaceSchema = z.discriminatedUnion("status", [
 ]);
 
 type RelinkDatabase = ReturnType<typeof openDatabase>["db"];
+type RelinkTransaction = Parameters<Parameters<RelinkDatabase["transaction"]>[0]>[0];
+type RelinkDatabaseExecutor = RelinkDatabase | RelinkTransaction;
 type ActionableStatus = z.infer<typeof actionableStatusSchema>;
 type ComparisonDiff = z.infer<typeof comparisonDiffSchema>;
 export type NormalizationReviewWorkspace = z.infer<typeof reviewWorkspaceSchema>;
@@ -153,7 +155,7 @@ function decisionKey(record: Pick<NormalizedRecordDiff, "category" | "sourceReco
 }
 
 function findCandidate(
-  db: RelinkDatabase,
+  db: RelinkDatabaseExecutor,
   baselineNormalizationRunId: string | null,
 ): SelectedRun | null {
   const runs = db
@@ -189,7 +191,7 @@ function findCandidate(
   return null;
 }
 
-function createInitialDiff(db: RelinkDatabase, candidate: SelectedRun): ComparisonDiff {
+function createInitialDiff(db: RelinkDatabaseExecutor, candidate: SelectedRun): ComparisonDiff {
   const records: NormalizedRecordDiff[] = db
     .select({
       category: normalizedRecords.category,
@@ -219,7 +221,7 @@ function createInitialDiff(db: RelinkDatabase, candidate: SelectedRun): Comparis
   });
 }
 
-function buildInternalComparison(db: RelinkDatabase): InternalComparison | null {
+function buildInternalComparison(db: RelinkDatabaseExecutor): InternalComparison | null {
   const baseline = db
     .select({ normalizationRunId: acceptedNormalizationBaselines.normalizationRunId })
     .from(acceptedNormalizationBaselines)
@@ -246,7 +248,10 @@ function buildInternalComparison(db: RelinkDatabase): InternalComparison | null 
   return { baselineNormalizationRunId, candidate, fingerprint, diff };
 }
 
-function requireCurrentComparison(db: RelinkDatabase, fingerprint: string): InternalComparison {
+function requireCurrentComparison(
+  db: RelinkDatabaseExecutor,
+  fingerprint: string,
+): InternalComparison {
   const comparison = buildInternalComparison(db);
   if (comparison?.fingerprint !== fingerprint) {
     throw new NormalizationRecordReviewError(
@@ -257,7 +262,7 @@ function requireCurrentComparison(db: RelinkDatabase, fingerprint: string): Inte
   return comparison;
 }
 
-function readDecisionRows(db: RelinkDatabase, comparison: InternalComparison) {
+function readDecisionRows(db: RelinkDatabaseExecutor, comparison: InternalComparison) {
   const actionableRecords = comparison.diff.records.filter(
     (record): record is NormalizedRecordDiff & { status: ActionableStatus } =>
       record.status !== "unchanged",
@@ -281,7 +286,7 @@ function readDecisionRows(db: RelinkDatabase, comparison: InternalComparison) {
 }
 
 function toWorkspace(
-  db: RelinkDatabase,
+  db: RelinkDatabaseExecutor,
   comparison: InternalComparison,
 ): NormalizationReviewWorkspace {
   const decisions = readDecisionRows(db, comparison);
@@ -422,30 +427,35 @@ export function acceptFullyReviewedNormalizationRun(
     );
   }
   const candidate = validation.data;
-  const comparison = requireCurrentComparison(db, candidate.comparisonFingerprint);
-  const workspace = toWorkspace(db, comparison);
-  if (workspace.status !== "ready") {
-    throw new NormalizationRecordReviewError(
-      "NORMALIZATION_RECORD_REVIEW_COMPARISON_STALE",
-      "승인할 최신 비교를 찾을 수 없습니다.",
-    );
-  }
-  if (workspace.decisionSummary.rejected > 0) {
-    throw new NormalizationRecordReviewError(
-      "NORMALIZATION_RECORD_REVIEW_REJECTED",
-      "거절된 변경 레코드가 있어 normalization 후보를 승인할 수 없습니다.",
-    );
-  }
-  if (workspace.decisionSummary.pending > 0) {
-    throw new NormalizationRecordReviewError(
-      "NORMALIZATION_RECORD_REVIEW_INCOMPLETE",
-      "모든 변경 레코드를 검수한 뒤 normalization 후보를 승인하세요.",
-    );
-  }
-  return acceptNormalizationRun(db, {
-    normalizationRunId: comparison.candidate.id,
-    acceptedAt: candidate.acceptedAt,
-    expectedBaselineNormalizationRunId: comparison.baselineNormalizationRunId,
-    backup: candidate.backup,
-  });
+  return db.transaction(
+    (transaction) => {
+      const comparison = requireCurrentComparison(transaction, candidate.comparisonFingerprint);
+      const workspace = toWorkspace(transaction, comparison);
+      if (workspace.status !== "ready") {
+        throw new NormalizationRecordReviewError(
+          "NORMALIZATION_RECORD_REVIEW_COMPARISON_STALE",
+          "승인할 최신 비교를 찾을 수 없습니다.",
+        );
+      }
+      if (workspace.decisionSummary.rejected > 0) {
+        throw new NormalizationRecordReviewError(
+          "NORMALIZATION_RECORD_REVIEW_REJECTED",
+          "거절된 변경 레코드가 있어 normalization 후보를 승인할 수 없습니다.",
+        );
+      }
+      if (workspace.decisionSummary.pending > 0) {
+        throw new NormalizationRecordReviewError(
+          "NORMALIZATION_RECORD_REVIEW_INCOMPLETE",
+          "모든 변경 레코드를 검수한 뒤 normalization 후보를 승인하세요.",
+        );
+      }
+      return acceptNormalizationRun(transaction, {
+        normalizationRunId: comparison.candidate.id,
+        acceptedAt: candidate.acceptedAt,
+        expectedBaselineNormalizationRunId: comparison.baselineNormalizationRunId,
+        backup: candidate.backup,
+      });
+    },
+    { behavior: "immediate" },
+  );
 }

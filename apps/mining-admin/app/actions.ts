@@ -3,7 +3,7 @@
 import {
   acceptFullyReviewedNormalizationRun,
   NormalizationRecordReviewError,
-  openDatabase,
+  openExistingDatabase,
   saveNormalizationRecordReviewDecision,
 } from "@relink-wiki/database";
 import {
@@ -83,9 +83,9 @@ export async function saveRecordDecisionAction(formData: FormData): Promise<void
   }
 
   let notice = "decision_saved";
-  let connection: ReturnType<typeof openDatabase> | undefined;
+  let connection: ReturnType<typeof openExistingDatabase> | undefined;
   try {
-    connection = openDatabase({ path: databasePath });
+    connection = openExistingDatabase({ path: databasePath });
     saveNormalizationRecordReviewDecision(connection.db, {
       ...validation.data,
       note: validation.data.note || null,
@@ -117,9 +117,9 @@ export async function acceptCandidateAction(formData: FormData): Promise<void> {
   }
 
   let notice = "candidate_accepted";
-  let connection: ReturnType<typeof openDatabase> | undefined;
+  let connection: ReturnType<typeof openExistingDatabase> | undefined;
   try {
-    connection = openDatabase({ path: databasePath });
+    connection = openExistingDatabase({ path: databasePath });
     acceptFullyReviewedNormalizationRun(connection.db, {
       comparisonFingerprint: validation.data.comparisonFingerprint,
       acceptedAt: new Date().toISOString(),
