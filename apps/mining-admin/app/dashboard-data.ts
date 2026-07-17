@@ -1,6 +1,9 @@
 import {
+  getNormalizationReviewWorkspace,
   getReviewDashboard,
+  NormalizationRecordReviewError,
   openReadonlyDatabase,
+  type NormalizationReviewWorkspace,
   type ReviewDashboard,
 } from "@relink-wiki/database";
 import { createPublicSnapshotPreview } from "@relink-wiki/publisher";
@@ -14,11 +17,23 @@ export type DashboardPreview =
   | { status: "unavailable"; message: string };
 
 export type DashboardLoadState =
-  | { kind: "ready"; dashboard: ReviewDashboard; preview: DashboardPreview }
+  | {
+      kind: "ready";
+      dashboard: ReviewDashboard;
+      preview: DashboardPreview;
+      review: DashboardReview;
+    }
   | {
       kind: "error";
       code: "DATABASE_PATH_UNSET" | "DATABASE_NOT_FOUND" | "DATABASE_INVALID";
       title: string;
+      message: string;
+    };
+
+export type DashboardReview =
+  | NormalizationReviewWorkspace
+  | {
+      status: "unavailable";
       message: string;
     };
 
@@ -67,6 +82,28 @@ function sqliteErrorCode(error: unknown): string | null {
   return typeof error.code === "string" ? error.code : null;
 }
 
+function loadReview(db: ReturnType<typeof openReadonlyDatabase>["db"]): DashboardReview {
+  try {
+    return getNormalizationReviewWorkspace(db);
+  } catch (error) {
+    if (
+      error instanceof NormalizationRecordReviewError &&
+      error.code === "NORMALIZATION_RECORD_REVIEW_DATABASE_INVALID"
+    ) {
+      return {
+        status: "unavailable",
+        message:
+          "저장된 검수 결정이 현재 비교 결과와 일치하지 않습니다. 데이터 무결성과 최신 후보 상태를 확인하세요.",
+      };
+    }
+    return {
+      status: "unavailable",
+      message:
+        "레코드 검수 저장소를 읽을 수 없습니다. 마이그레이션 상태와 데이터베이스 무결성을 확인하세요.",
+    };
+  }
+}
+
 export function loadDashboard(databasePath = process.env.RELINK_DATABASE_PATH): DashboardLoadState {
   if (!databasePath?.trim()) {
     return {
@@ -81,7 +118,12 @@ export function loadDashboard(databasePath = process.env.RELINK_DATABASE_PATH): 
   try {
     connection = openReadonlyDatabase({ path: databasePath });
     const dashboard = getReviewDashboard(connection.db);
-    return { kind: "ready", dashboard, preview: loadPreview(dashboard, connection.db) };
+    return {
+      kind: "ready",
+      dashboard,
+      preview: loadPreview(dashboard, connection.db),
+      review: loadReview(connection.db),
+    };
   } catch (error) {
     if (sqliteErrorCode(error) === "SQLITE_CANTOPEN") {
       return {

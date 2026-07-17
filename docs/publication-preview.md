@@ -67,6 +67,8 @@ The command validates the exact reviewed file bytes and public content revision,
 
 The request deliberately fixes its UUID, timestamps, backup evidence and reviewed file digest. Re-running the exact request reuses both a byte-identical candidate and an already recorded publication, which covers a lost response between either durable step. A written but unfinalized candidate is not deployed.
 
-## Current integration boundary
+## Local admin integration boundary
 
-The mining admin still does not call these write APIs. The local publication command does not itself replace `apps/wiki/public/data/public-snapshot.v1.json`, commit generated data, create a Sites checkpoint, widen access or implement rollback. On 2026-07-16, a separately approved operation copied the verified schema version 1 publication candidate into the checked-in snapshot; Sites checkpoint creation and access changes remain separate. See [`publication-history.md`](publication-history.md) and [`sites-deployment.md`](sites-deployment.md).
+The mining admin publication form requires the operator to type `PUBLISH_REVIEWED_PUBLIC_SNAPSHOT_V1`, then invokes the same `runPublicSnapshotPublicationCommand` using server-only `RELINK_DATABASE_PATH` and `RELINK_PUBLICATION_REQUEST_PATH`. The browser never receives either path, the private request contents, publication/run IDs, or backup reference. All reviewed-file, digest, content-revision, backup-freshness, writer and database retry gates remain owned by the existing command.
+
+The form writes only the verified candidate and publication history. It does not replace `apps/wiki/public/data/public-snapshot.v1.json`, commit generated data, create a Sites checkpoint, widen access or implement rollback. On 2026-07-16, a separately approved operation copied the verified schema version 1 publication candidate into the checked-in snapshot; Sites checkpoint creation and access changes remain separate. See [`publication-history.md`](publication-history.md) and [`sites-deployment.md`](sites-deployment.md).

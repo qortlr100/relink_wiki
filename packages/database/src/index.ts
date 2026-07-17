@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export * from "./migration";
 export * from "./normalization-diff-repository";
+export * from "./normalization-record-review-repository";
 export * from "./normalization-repository";
 export * from "./normalization-review-repository";
 export * from "./publication-repository";
@@ -19,6 +20,14 @@ export const databaseConfigSchema = z.object({ path: z.string().min(1) });
 export function openDatabase(input: unknown) {
   const config = databaseConfigSchema.parse(input);
   const sqlite = new Database(config.path);
+  sqlite.pragma("foreign_keys = ON");
+  sqlite.pragma("busy_timeout = 5000");
+  return { sqlite, db: drizzle(sqlite, { schema }) };
+}
+
+export function openExistingDatabase(input: unknown) {
+  const config = databaseConfigSchema.parse(input);
+  const sqlite = new Database(config.path, { fileMustExist: true });
   sqlite.pragma("foreign_keys = ON");
   sqlite.pragma("busy_timeout = 5000");
   return { sqlite, db: drizzle(sqlite, { schema }) };

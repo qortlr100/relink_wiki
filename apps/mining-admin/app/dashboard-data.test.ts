@@ -57,6 +57,7 @@ describe("dashboard data loader", () => {
       kind: "ready",
       dashboard: { normalizationRuns: [], currentBaseline: null, currentPublication: null },
       preview: { status: "unavailable", message: "승인된 baseline이 아직 없습니다." },
+      review: { status: "empty", message: "검수할 최신 staged normalization 후보가 없습니다." },
     });
   });
 });

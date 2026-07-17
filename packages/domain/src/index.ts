@@ -1,5 +1,6 @@
 import { z } from "zod";
 export const reviewStateSchema = z.enum(["staged", "reviewed", "published"]);
+export const recordReviewDecisionSchema = z.enum(["approved", "rejected"]);
 export const normalizedCategorySchema = z.enum(["character", "weapon", "sigil", "skill"]);
 export const recordIdSchema = z
   .string()
@@ -244,6 +245,7 @@ export const publicSnapshotPublicationSchema = z
     }
   });
 export type Character = z.infer<typeof characterSchema>;
+export type RecordReviewDecision = z.infer<typeof recordReviewDecisionSchema>;
 export type NormalizedRecord = z.infer<typeof normalizedRecordSchema>;
 export type NormalizationDiff = z.infer<typeof normalizationDiffSchema>;
 export type NormalizedRecordDiff = z.infer<typeof normalizedRecordDiffSchema>;

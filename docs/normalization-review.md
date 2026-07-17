@@ -4,7 +4,7 @@
 
 The database package can explicitly accept a private normalization run as the current baseline for its normalization schema version. Acceptance is an atomic local operation: it records an immutable acceptance event, moves the schema-version baseline pointer, and changes every record in the accepted run from `staged` to `reviewed`.
 
-Acceptance does not publish data, create a public snapshot, change a record to `published`, or expose the private database through either application. Rejection decisions, per-record review, and the mining-admin review screen remain later work.
+Acceptance does not publish data, create a public snapshot, change a record to `published`, or expose the private database through the public wiki. The mining admin now adds a per-record review gate before calling this acceptance contract.
 
 ## Backup gate
 
@@ -35,6 +35,10 @@ Each normalization schema version has an independent current baseline. Replacing
 
 Error messages do not include normalization run IDs, paths, Korean names, source payloads, or backup references.
 
-## Current integration boundary
+## Record decision gate and local admin integration
 
-The mining admin is not connected to this API yet. Its future review flow must show the latest normalization diff, create and verify the NAS backup, pass the observed baseline ID, and require an explicit operator action. Publication remains a separate previewed operation.
+Migration `0004_record_review_decisions` adds one immutable comparison identity and updateable decisions for its actionable records. Each decision stores the private category/source key, diff status, `approved` or `rejected`, an optional 500-character operator note, and the decision timestamp. The browser model excludes source keys and run IDs.
+
+Every decision request must present the opaque comparison fingerprint currently derived from the baseline, candidate, and complete deterministic diff. A newer staged candidate or changed baseline makes the old request stale. The same fingerprint also gates run acceptance.
+
+The mining admin enables the run-level approval form only when every `added`, `changed`, and `removed` record is `approved`; any pending or rejected record blocks the write. The operator must then enter a path-free NAS backup reference, completion time, lowercase SHA-256, and exact confirmation `ACCEPT_FULLY_REVIEWED_NORMALIZATION_V1`. The server resolves the internal run IDs again and calls `acceptNormalizationRun` with the observed baseline. Publication remains a separate operation.

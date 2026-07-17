@@ -14,6 +14,8 @@ const normalizationDiffInputSchema = z.object({
 });
 
 type RelinkDatabase = ReturnType<typeof openDatabase>["db"];
+type RelinkTransaction = Parameters<Parameters<RelinkDatabase["transaction"]>[0]>[0];
+type RelinkDatabaseExecutor = RelinkDatabase | RelinkTransaction;
 type DiffRecordValue = NonNullable<NormalizedRecordDiff["baseline"]>;
 
 export type NormalizationDiffErrorCode =
@@ -40,7 +42,7 @@ function recordKey(record: Pick<ComparableRecord, "category" | "sourceRecordId">
   return `${record.category}:${record.sourceRecordId}`;
 }
 
-function readRun(db: RelinkDatabase, normalizationRunId: string) {
+function readRun(db: RelinkDatabaseExecutor, normalizationRunId: string) {
   return db
     .select({ id: normalizationRuns.id, schemaVersion: normalizationRuns.schemaVersion })
     .from(normalizationRuns)
@@ -48,7 +50,7 @@ function readRun(db: RelinkDatabase, normalizationRunId: string) {
     .get();
 }
 
-function readRecords(db: RelinkDatabase, normalizationRunId: string): ComparableRecord[] {
+function readRecords(db: RelinkDatabaseExecutor, normalizationRunId: string): ComparableRecord[] {
   return db
     .select({
       category: normalizedRecords.category,
@@ -84,7 +86,10 @@ function compareRecordValues(
   };
 }
 
-export function compareNormalizationRuns(db: RelinkDatabase, input: unknown): NormalizationDiff {
+export function compareNormalizationRuns(
+  db: RelinkDatabaseExecutor,
+  input: unknown,
+): NormalizationDiff {
   const validation = normalizationDiffInputSchema.safeParse(input);
   if (!validation.success) {
     throw new NormalizationDiffError(
