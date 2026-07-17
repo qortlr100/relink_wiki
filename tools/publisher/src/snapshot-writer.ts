@@ -198,10 +198,9 @@ export function writePublicSnapshot(input: unknown): PublicSnapshotWriteResult {
       throw error;
     }
 
-    const current = readCurrentSnapshot(targetPath);
-    assertExpectedCurrentRevision(current, candidate.expectedCurrentContentRevision);
     const serialized = serializeSnapshot(candidate.snapshot);
     const outputSha256 = sha256(serialized);
+    const current = readCurrentSnapshot(targetPath);
     if (current?.serialized === serialized) {
       return {
         fileName,
@@ -210,6 +209,7 @@ export function writePublicSnapshot(input: unknown): PublicSnapshotWriteResult {
         reused: true,
       };
     }
+    assertExpectedCurrentRevision(current, candidate.expectedCurrentContentRevision);
 
     temporaryDescriptor = openSync(temporaryPath, "wx", 0o600);
     writeFileSync(temporaryDescriptor, serialized, "utf8");

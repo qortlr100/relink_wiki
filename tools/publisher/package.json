@@ -7,6 +7,7 @@
   },
   "scripts": {
     "build": "tsc --noEmit",
+    "publish": "tsx src/publication-cli.ts",
     "preview": "tsx src/preview-cli.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

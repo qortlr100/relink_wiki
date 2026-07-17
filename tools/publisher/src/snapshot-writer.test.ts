@@ -65,6 +65,16 @@ describe("public snapshot writer", () => {
     expect(second).toEqual({ ...first, reused: true });
   });
 
+  it("reuses byte-identical output after a lost response with the original expectation", () => {
+    const directory = mkdtempSync(join(tmpdir(), "relink-publisher-"));
+    const input = createInput(directory);
+    const first = writePublicSnapshot(input);
+
+    const retried = writePublicSnapshot(input);
+
+    expect(retried).toEqual({ ...first, reused: true });
+  });
+
   it("refuses to overwrite a file that changed after preview", () => {
     const directory = mkdtempSync(join(tmpdir(), "relink-publisher-"));
     const first = createInput(directory);

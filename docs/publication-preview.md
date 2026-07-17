@@ -26,7 +26,7 @@ The internal baseline identity is hashed into a 64-character `sourceRevision`. `
 
 ## Candidate file write
 
-`writePublicSnapshot` accepts a complete `publicSnapshotSchema` value rather than private database rows. The caller must provide a path-free NAS backup receipt completed no later than the write time and the content revision observed during preview. A `null` expected revision permits only the first write; an existing file or a mismatched revision aborts the operation so a stale preview cannot replace newer output.
+`writePublicSnapshot` accepts a complete `publicSnapshotSchema` value rather than private database rows. The caller must provide a path-free NAS backup receipt completed no later than the write time and the content revision observed during preview. A `null` expected revision permits only the first distinct write; an existing different file or a mismatched revision aborts the operation so a stale preview cannot replace newer output. A byte-identical file is reused before the current-revision gate so an exact request can recover after the writer committed but its response was lost.
 
 The output directory must already exist as an absolute, non-symlinked directory controlled by the local operator. The writer uses the fixed filename `public-snapshot.v1.json`, holds an exclusive sibling lock, writes and flushes a uniquely named sibling temporary file, then renames it over the target. It reads the result again, validates the complete JSON contract, compares the exact bytes and returns a SHA-256 file digest. Byte-identical retries are safe and reported as reused. Errors expose stable codes and Korean messages without returning the output path or backup reference.
 
@@ -38,6 +38,35 @@ With `RELINK_DATABASE_PATH` set in the private shell environment, run `pnpm prev
 
 The local preview file is not the publication candidate consumed by the writer. Generating it does not require a new backup receipt, replace `apps/wiki/public/data/public-snapshot.v1.json`, change review state, record publication history or deploy the wiki.
 
+## Explicit local publication command
+
+The local `pnpm publish:public` command connects the writer and database finalizer without adding a write control to the mining admin. It requires both `RELINK_DATABASE_PATH` and `RELINK_PUBLICATION_REQUEST_PATH` to identify existing absolute, non-symlinked private files. The request file is private operator input and must never be committed.
+
+The strict version 1 request shape is:
+
+```json
+{
+  "confirmation": "PUBLISH_REVIEWED_PUBLIC_SNAPSHOT_V1",
+  "publicationId": "00000000-0000-4000-8000-000000000000",
+  "reviewedSnapshotPath": "C:\\path\\to\\private\\public-snapshot-preview.v1.json",
+  "reviewedSnapshotSha256": "64 lowercase hex characters",
+  "reviewedContentRevision": "64 lowercase hex characters",
+  "outputDirectory": "C:\\path\\to\\private\\publication-candidate",
+  "writtenAt": "2026-07-16T15:00:00.000Z",
+  "publishedAt": "2026-07-16T15:01:00.000Z",
+  "backup": {
+    "reference": "NAS-YYYYMMDDTHHMMSSZ",
+    "createdAt": "2026-07-16T14:55:00.000Z",
+    "sha256": "64 lowercase hex characters"
+  },
+  "expectedCurrentContentRevision": null
+}
+```
+
+The command validates the exact reviewed file bytes and public content revision, requires backup evidence completed after the current baseline acceptance and before the candidate write, writes the fixed `public-snapshot.v1.json`, then finalizes the same evidence in SQLite. Its success output contains only public revisions, category counts, output digest, record count and reuse flags. It omits paths, internal run/publication IDs and backup references.
+
+The request deliberately fixes its UUID, timestamps, backup evidence and reviewed file digest. Re-running the exact request reuses both a byte-identical candidate and an already recorded publication, which covers a lost response between either durable step. A written but unfinalized candidate is not deployed.
+
 ## Current integration boundary
 
-The mining admin does not call these APIs yet. After the writer commits and verifies a candidate, the separate database finalizer records immutable publication history and changes the accepted records to `published` in one transaction. The caller must retain the publication UUID, snapshot and writer receipt so an exact finalization request can be retried if the response is lost. A written but unfinalized candidate is not deployed. See [`publication-history.md`](publication-history.md). The repository's sample snapshot remains UI fixture data rather than a generated release, and Sites deployment is still later work.
+The mining admin still does not call these write APIs. The local publication command does not itself replace `apps/wiki/public/data/public-snapshot.v1.json`, commit generated data, create a Sites checkpoint, widen access or implement rollback. On 2026-07-16, a separately approved operation copied the verified schema version 1 publication candidate into the checked-in snapshot; Sites checkpoint creation and access changes remain separate. See [`publication-history.md`](publication-history.md) and [`sites-deployment.md`](sites-deployment.md).

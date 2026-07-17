@@ -4,7 +4,7 @@ The database package finalizes a verified public snapshot candidate only after t
 
 ## Required evidence
 
-The caller provides a stable publication UUID, the complete validated snapshot, the writer result for the fixed `public-snapshot.v1.json` filename, a path-free NAS backup receipt, the publication timestamp, and the content revision observed as current during preview. The output content revision must match the snapshot, and both the snapshot and backup must predate finalization.
+The local publication command loads these values from the strict private request described in [`publication-preview.md`](publication-preview.md). It provides a stable publication UUID, the exact reviewed and validated snapshot, the writer result for the fixed `public-snapshot.v1.json` filename, a path-free NAS backup receipt, the publication timestamp, and the content revision observed as current during preview. The output content revision must match the snapshot, and both the snapshot and backup must predate finalization.
 
 Before writing the database, the repository verifies that:
 
@@ -20,6 +20,6 @@ Errors use stable codes and do not include normalization run IDs, backup referen
 
 The immutable history row, schema-version current pointer, and complete `reviewed` to `published` transition commit together. If any condition fails, none of those database changes persist.
 
-The JSON writer necessarily commits before this SQLite transaction, so the two resources cannot share one atomic commit. A candidate that was written but not finalized is not a deployed release. The caller must retain the publication UUID, snapshot, and writer receipt and retry the exact finalization request. Exact retries are reported as reused after a successful commit; reusing the UUID with different evidence is rejected.
+The JSON writer necessarily commits before this SQLite transaction, so the two resources cannot share one atomic commit. A candidate that was written but not finalized is not a deployed release. The operator retains the request file and reviewed snapshot, then reruns the exact `pnpm publish:public` command. The byte-identical writer result and exact finalization are reported as reused after their respective commits; reusing the UUID with different evidence is rejected.
 
-This contract does not deploy Sites, copy a candidate into the wiki source tree, expose publication controls publicly, or implement rollback. The mining admin must later present the preview or diff before invoking the writer and finalizer explicitly.
+This contract does not deploy Sites, copy a candidate into the wiki source tree, expose publication controls publicly, or implement rollback. The mining admin remains read-only; its future write controls must preserve the same reviewed-file, backup and concurrency gates.

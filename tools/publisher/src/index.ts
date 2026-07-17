@@ -9,6 +9,7 @@ import { publicSnapshotSchema, type PublicRecord, type PublicSnapshot } from "@r
 import { z } from "zod";
 
 export * from "./snapshot-writer";
+export * from "./publication-command";
 
 const publicSnapshotPreviewInputSchema = z
   .object({
