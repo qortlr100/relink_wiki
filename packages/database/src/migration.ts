@@ -22,6 +22,10 @@ const migrations = [
     id: "0003_publication_history",
     path: fileURLToPath(new URL("../migrations/0003_publication_history.sql", import.meta.url)),
   },
+  {
+    id: "0004_record_review_decisions",
+    path: fileURLToPath(new URL("../migrations/0004_record_review_decisions.sql", import.meta.url)),
+  },
 ] as const;
 
 export class DatabaseMigrationError extends Error {

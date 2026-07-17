@@ -5,9 +5,9 @@ Granblue Fantasy: Relink 데이터를 로컬에서 추출·검수하고, 승인�
 ## 현재 구현 범위
 
 - 공개 위키는 검증된 버전 1 정적 JSON 스냅샷에서 캐릭터, 무기, 진, 스킬의 검색·목록·상세 화면을 제공합니다. 저장소와 [현재 Sites 공개본](https://relink-wiki.cid100.chatgpt.site)에는 로컬 publication을 완료한 실제 schema v1 스냅샷 1,681건이 포함되어 있습니다. 추출 결과는 그대로 보존하되 아직 독자용 표현 계약이 없는 `character-pl000b` 한 건은 프론트엔드 탐색에서만 제외하므로 현재 검색·목록·상세 UI에는 1,680건이 노출됩니다.
-- 로컬 마이닝 관리 도구는 `127.0.0.1:3100`에만 바인딩되며, `RELINK_DATABASE_PATH`의 SQLite를 읽기 전용으로 열어 normalization 실행, 현재 baseline, 백업 증빙, review state, publication 및 allowlist 미리보기 현황을 표시합니다. 승인·발행 쓰기와 레코드별 검수 UI는 아직 연결되지 않았습니다.
+- 로컬 마이닝 관리 도구는 `127.0.0.1:3100`에만 바인딩되며, `RELINK_DATABASE_PATH`의 SQLite에서 normalization 실행, 현재 baseline, 백업 증빙, review state, publication 및 allowlist 미리보기를 표시합니다. 최신 staged 후보의 `added`·`changed`·`removed` 레코드를 공개 allowlist 필드만으로 비교하고 승인/거절 결정을 저장하며, 모든 변경 승인과 NAS 백업 gate 후 baseline 승인 및 명시적 snapshot 발행을 실행합니다.
 - 추출기 패키지는 GBFRDataTools `2.0.0` 실행 전 점검, 후보 SQLite의 private staging import, 한국어 메시지 조인 검증, 검수용 mapping 후보 생성과 명시적 매핑 기반 normalization을 지원합니다.
-- 데이터베이스 패키지는 두 private normalization 실행의 공개 후보 필드를 읽기 전용으로 비교하고, NAS 백업 증빙과 baseline 동시성 확인을 거친 명시적 승인을 영속화합니다. publisher 패키지는 승인된 baseline에서 allowlist 공개 DTO와 검증 가능한 manifest 미리보기를 만들며, 검토 파일의 전체 SHA-256과 명시적 확인 토큰을 고정한 로컬 발행 요청으로 version 1 JSON 후보 쓰기와 publication DB transaction을 연결합니다. 관리 UI, 거절 검수와 rollback은 다음 구현 범위입니다.
+- 데이터베이스 패키지는 두 private normalization 실행의 공개 후보 필드를 비교하고, 비교 fingerprint에 묶인 레코드별 승인/거절 결정과 NAS 백업 증빙, baseline 동시성 확인을 거친 명시적 승인을 영속화합니다. publisher 패키지는 승인된 baseline에서 allowlist 공개 DTO와 검증 가능한 manifest 미리보기를 만들며, 검토 파일의 전체 SHA-256과 명시적 확인 토큰을 고정한 로컬 발행 요청으로 version 1 JSON 후보 쓰기와 publication DB transaction을 연결합니다. 체크인 snapshot 교체, Sites 배포와 rollback은 관리 UI 발행과 분리됩니다.
 - 공개 위키 빌드는 Sites용 Worker와 정적 자산만 루트 `dist/`에 패키징하고, 관리 앱·SQLite·로컬 경로 표식이 산출물에 포함되지 않았는지 검사합니다. 현재 실제 스냅샷은 이 경계를 통과해 Sites에 공개됐으며, 저장소의 검토 파일과 배포본의 전체 JSON 일치 여부를 별도 명령으로 확인할 수 있습니다. 이전 체크포인트로 실제 전환하는 rollback 훈련은 명시적 운영 승인 후 수행합니다.
 
 ## 요구 사항
@@ -35,7 +35,7 @@ pnpm dev:admin
 - 공개 위키: `http://localhost:3000`
 - 로컬 관리 도구: `http://127.0.0.1:3100`
 
-관리 도구는 기본적으로 `127.0.0.1:3100`에만 바인딩됩니다. 실행 전에 비공개 셸 환경에 `RELINK_DATABASE_PATH`를 설정해야 하며, 앱은 해당 파일을 생성하거나 마이그레이션하지 않고 읽기 전용으로 엽니다. 미설정·누락·손상 상태는 경로나 내부 값을 노출하지 않는 오류 화면으로 표시됩니다. 자세한 화면 계약은 [`docs/review-dashboard.md`](docs/review-dashboard.md)를 참고하세요. 추출기 설정은 `.env.example`을 참고하되 실제 경로와 데이터는 커밋하지 않습니다.
+관리 도구는 기본적으로 `127.0.0.1:3100`에만 바인딩됩니다. 실행 전에 비공개 셸 환경에 `RELINK_DATABASE_PATH`를 설정해야 합니다. 화면 조회는 기존 파일을 읽기 전용으로 열고, 사용자가 레코드 결정을 저장하거나 승인 버튼을 누를 때만 짧은 쓰기 연결을 사용합니다. 앱은 데이터베이스를 생성하거나 마이그레이션하지 않으므로 쓰기 기능을 사용하기 전에 NAS 백업 후 최신 마이그레이션을 적용해야 합니다. 발행 버튼은 추가로 `RELINK_PUBLICATION_REQUEST_PATH`의 private 요청을 사용합니다. 미설정·누락·손상 상태는 경로나 내부 값을 노출하지 않는 오류 화면으로 표시됩니다. 자세한 화면 계약은 [`docs/review-dashboard.md`](docs/review-dashboard.md)를 참고하세요. 추출기 설정은 `.env.example`을 참고하되 실제 경로와 데이터는 커밋하지 않습니다.
 
 GBFRDataTools를 사용하기 전에는 비공개 `.env`를 로드한 셸에서 실행 전 점검을 통과해야 합니다.
 
@@ -77,7 +77,7 @@ pnpm --filter @relink-wiki/extractor normalize:mapped
 
 정규화 입력 계약, 출처 보존과 재실행 동작은 [`docs/normalization.md`](docs/normalization.md)를 참고하세요. 정규화된 레코드는 항상 `staged` 상태로 시작하며 자동 발행되지 않습니다.
 
-두 private normalization 실행 간 `added`, `changed`, `removed`, `unchanged` 비교 계약은 [`docs/normalization-diff.md`](docs/normalization-diff.md)를 참고하세요. 현재 비교 엔진은 데이터베이스 패키지의 읽기 전용 API이며 관리 화면에는 아직 연결되지 않았습니다.
+두 private normalization 실행 간 `added`, `changed`, `removed`, `unchanged` 비교 계약은 [`docs/normalization-diff.md`](docs/normalization-diff.md)를 참고하세요. 관리 화면은 현재 schema v1 baseline과 최신 staged 후보를 선택하고, 변경 레코드만 페이지 단위로 검수합니다.
 
 정규화 실행 승인, NAS 백업 증빙과 스키마 버전별 baseline 계약은 [`docs/normalization-review.md`](docs/normalization-review.md)를 참고하세요. 승인은 레코드를 `reviewed`로 전환하지만 공개 스냅샷을 만들거나 발행하지 않습니다.
 

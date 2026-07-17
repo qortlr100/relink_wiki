@@ -153,6 +153,44 @@ export const acceptedNormalizationBaselines = sqliteTable("accepted_normalizatio
   backupSha256: text("backup_sha256").notNull(),
 });
 
+export const normalizationReviewComparisons = sqliteTable("normalization_review_comparisons", {
+  fingerprint: text("fingerprint").primaryKey(),
+  baselineNormalizationRunId: text("baseline_normalization_run_id").references(
+    () => normalizationRuns.id,
+  ),
+  candidateNormalizationRunId: text("candidate_normalization_run_id")
+    .notNull()
+    .references(() => normalizationRuns.id),
+  schemaVersion: integer("schema_version").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
+export const normalizationRecordReviewDecisions = sqliteTable(
+  "normalization_record_review_decisions",
+  {
+    comparisonFingerprint: text("comparison_fingerprint")
+      .notNull()
+      .references(() => normalizationReviewComparisons.fingerprint, { onDelete: "cascade" }),
+    category: text("category", {
+      enum: ["character", "weapon", "sigil", "skill"],
+    }).notNull(),
+    sourceRecordId: text("source_record_id").notNull(),
+    diffStatus: text("diff_status", { enum: ["added", "changed", "removed"] }).notNull(),
+    decision: text("decision", { enum: ["approved", "rejected"] }).notNull(),
+    note: text("note"),
+    decidedAt: text("decided_at").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.comparisonFingerprint, table.category, table.sourceRecordId],
+    }),
+    index("normalization_record_review_decisions_comparison_index").on(
+      table.comparisonFingerprint,
+      table.decision,
+    ),
+  ],
+);
+
 export const publicSnapshotPublications = sqliteTable(
   "public_snapshot_publications",
   {

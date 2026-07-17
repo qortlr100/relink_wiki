@@ -35,6 +35,8 @@ This API can compare any two compatible private runs, but the supplied baseline 
 
 Errors do not include requested run IDs, private paths, Korean display names, source payloads, or staging values.
 
-## Current integration boundary
+## Local admin integration
 
-The local mining admin is not connected to the comparison or acceptance APIs yet. Its future comparison screen may consume these contracts, but must remain bound to `127.0.0.1`, must not expose private values through the public wiki, and must keep explicit review decisions separate from read-only diff calculation.
+The local mining admin selects the current schema version 1 baseline and the newest other normalization run that still contains `staged` records. It displays the deterministic summary and only the public candidate values returned by this comparison. Source record IDs remain server-side; the browser receives an array position plus an opaque SHA-256 comparison fingerprint instead of run IDs or source IDs.
+
+`added`, `changed`, and `removed` records require an explicit per-record decision. `unchanged` records remain in the summary but do not require a redundant decision. Category, diff status, and decision filters are display-only and do not change comparison identity.

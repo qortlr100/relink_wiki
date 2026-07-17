@@ -1,6 +1,8 @@
 import {
+  getNormalizationReviewWorkspace,
   getReviewDashboard,
   openReadonlyDatabase,
+  type NormalizationReviewWorkspace,
   type ReviewDashboard,
 } from "@relink-wiki/database";
 import { createPublicSnapshotPreview } from "@relink-wiki/publisher";
@@ -14,11 +16,23 @@ export type DashboardPreview =
   | { status: "unavailable"; message: string };
 
 export type DashboardLoadState =
-  | { kind: "ready"; dashboard: ReviewDashboard; preview: DashboardPreview }
+  | {
+      kind: "ready";
+      dashboard: ReviewDashboard;
+      preview: DashboardPreview;
+      review: DashboardReview;
+    }
   | {
       kind: "error";
       code: "DATABASE_PATH_UNSET" | "DATABASE_NOT_FOUND" | "DATABASE_INVALID";
       title: string;
+      message: string;
+    };
+
+export type DashboardReview =
+  | NormalizationReviewWorkspace
+  | {
+      status: "unavailable";
       message: string;
     };
 
@@ -67,6 +81,17 @@ function sqliteErrorCode(error: unknown): string | null {
   return typeof error.code === "string" ? error.code : null;
 }
 
+function loadReview(db: ReturnType<typeof openReadonlyDatabase>["db"]): DashboardReview {
+  try {
+    return getNormalizationReviewWorkspace(db);
+  } catch {
+    return {
+      status: "unavailable",
+      message: "레코드 검수 테이블을 읽을 수 없습니다. 최신 마이그레이션을 적용하세요.",
+    };
+  }
+}
+
 export function loadDashboard(databasePath = process.env.RELINK_DATABASE_PATH): DashboardLoadState {
   if (!databasePath?.trim()) {
     return {
@@ -81,7 +106,12 @@ export function loadDashboard(databasePath = process.env.RELINK_DATABASE_PATH): 
   try {
     connection = openReadonlyDatabase({ path: databasePath });
     const dashboard = getReviewDashboard(connection.db);
-    return { kind: "ready", dashboard, preview: loadPreview(dashboard, connection.db) };
+    return {
+      kind: "ready",
+      dashboard,
+      preview: loadPreview(dashboard, connection.db),
+      review: loadReview(connection.db),
+    };
   } catch (error) {
     if (sqliteErrorCode(error) === "SQLITE_CANTOPEN") {
       return {

@@ -15,7 +15,7 @@ The mandatory contributor and agent rules live in the repository root `AGENTS.md
 | Data access          | Drizzle ORM                                 | Typed schema and migrations without hiding SQL behavior                          |
 | Boundary validation  | Zod                                         | Makes extraction and publication contracts explicit                              |
 | Unit tests           | Vitest                                      | Fast TypeScript-native tests                                                     |
-| Browser tests        | Playwright (planned)                        | Will verify wiki navigation and critical admin flows once the suite is added     |
+| Browser tests        | Manual browser QA; Playwright suite planned | Verifies critical flows now while preserving a path to checked-in regression QA  |
 | Static analysis      | TypeScript, ESLint, Prettier                | Reproducible baseline across agents                                              |
 | Initial publication  | Versioned static JSON                       | Simple and auditable before a hosted database is justified                       |
 
@@ -56,15 +56,15 @@ The currently validated extraction baseline pins GBFRDataTools `2.0.0` and requi
 
 Each stage has a separate input/output contract. The current repository status is:
 
-| Stage         | Status      | Current contract                                                                                                                                                                  |
-| ------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **extract**   | Partial     | Preflight and a documented read-only GBFRDataTools workflow exist; the repository does not invoke extraction yet.                                                                 |
-| **import**    | Implemented | Imports four allowlisted candidate tables into private staging records with provenance and idempotency.                                                                           |
-| **normalize** | Implemented | Generates a private review candidate from canonical resolved localization joins, then maps only the explicitly reviewed JSON into versioned `staged` records.                     |
-| **diff**      | Implemented | A read-only engine compares two compatible private normalization runs with deterministic, allowlisted results.                                                                    |
-| **review**    | Partial     | Explicit run acceptance persists backup evidence and one baseline per schema version; the local admin shows read-only aggregate status, while rejection and write actions remain. |
-| **publish**   | Partial     | Local publication, checked-in schema v1 snapshot and the actual Sites release are complete; mining-admin write controls and rollback remain.                                      |
-| **verify**    | Partial     | The actual snapshot passes automated boundaries, browser checks and complete deployed-JSON comparison; a live rollback transition still requires explicit approval and rehearsal. |
+| Stage         | Status      | Current contract                                                                                                                                                                                               |
+| ------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **extract**   | Partial     | Preflight and a documented read-only GBFRDataTools workflow exist; the repository does not invoke extraction yet.                                                                                              |
+| **import**    | Implemented | Imports four allowlisted candidate tables into private staging records with provenance and idempotency.                                                                                                        |
+| **normalize** | Implemented | Generates a private review candidate from canonical resolved localization joins, then maps only the explicitly reviewed JSON into versioned `staged` records.                                                  |
+| **diff**      | Implemented | A read-only engine compares two compatible private normalization runs with deterministic, allowlisted results.                                                                                                 |
+| **review**    | Implemented | The local admin compares the latest staged run, persists per-record approval/rejection, rejects stale comparisons, and gates baseline acceptance on complete approval plus NAS backup evidence.                |
+| **publish**   | Partial     | Local CLI and mining-admin publication controls, checked-in schema v1 snapshot and the actual Sites release are complete; checked-in replacement, deployment and rollback remain separate explicit operations. |
+| **verify**    | Partial     | The actual snapshot passes automated boundaries, browser checks and complete deployed-JSON comparison; a live rollback transition still requires explicit approval and rehearsal.                              |
 
 Stages must be independently repeatable and must not infer success from file existence alone.
 
@@ -76,7 +76,7 @@ The mapped normalization increment accepts the private, explicitly reviewed mapp
 
 The read-only localization validator establishes the current `chara.CharaName`, `weapon.Name`, `gem.Name`, and `ability.Unk5` joins against the extracted Korean message catalogs. It reports only coverage counts and keeps unresolved or empty-key rows out of automatic normalization. See [`localization-validation.md`](localization-validation.md).
 
-The read-only normalization diff pairs records by normalized category and source record ID, compares only the public candidate fields, reports deterministic status counts, and rejects cross-schema comparisons. A separate atomic acceptance contract requires verified, path-free NAS backup evidence, prevents stale baseline replacement, preserves prior acceptance history, and changes the accepted run's records from `staged` to `reviewed`. The local admin now summarizes run/category/review-state counts and the current acceptance boundary without returning record values or internal identifiers; diff details and all write actions remain later work. See [`normalization-diff.md`](normalization-diff.md), [`normalization-review.md`](normalization-review.md), and [`review-dashboard.md`](review-dashboard.md).
+The normalization diff pairs records by normalized category and source record ID, compares only the public candidate fields, reports deterministic status counts, and rejects cross-schema comparisons. The local admin selects the current version 1 baseline and latest staged candidate, sends only allowlisted values plus an opaque fingerprint to the browser, and persists `approved`/`rejected` decisions for `added`, `changed`, and `removed` rows. Stale fingerprints, pending decisions, or any rejection block acceptance. A separate atomic acceptance contract requires verified, path-free NAS backup evidence, prevents stale baseline replacement, preserves prior acceptance history, and changes the accepted run's records from `staged` to `reviewed`. See [`normalization-diff.md`](normalization-diff.md), [`normalization-review.md`](normalization-review.md), and [`review-dashboard.md`](review-dashboard.md).
 
 ## Public snapshot contract
 
@@ -99,6 +99,8 @@ Browser verification for the public snapshot flow must cover the home page, cate
 The snapshot loader integration was visually verified on 2026-07-14 with the former five-record prototype snapshot. After replacing it with the actual 1,681-record publication on 2026-07-16, snapshot and catalog tests, all production builds, the Sites public/private artifact gate, and local HTTP rendering for the home, character list and a character detail route passed. The local Workers server also required pinning `compatibility_date` to the newest date supported by the pinned workerd runtime (`2026-05-22`) rather than advancing it with the wall clock.
 
 The actual-data browser pass completed on 2026-07-17 after temporarily allowing the Codex in-app browser to access its Windows profile path. Desktop `1440 × 900` and mobile `390 × 844` checks covered home, category navigation, search, empty results, sorting, lists, record details, horizontal overflow and browser console output. The mobile snapshot revision now wraps within the viewport, category and detail layouts collapse to one column, and the console contained no warnings or errors. The checked-in snapshot still contains all 1,681 published rows; the reader-facing catalog exposes 1,680 because exact ID `character-pl000b` is intentionally withheld from counts, search, lists and direct detail navigation without changing extraction or publication data.
+
+The mining-admin record-review pass completed on the same date after migration `0004_record_review_decisions` was backed up and applied to the active private database. Desktop and mobile checks covered the no-candidate state, allowlisted record diffs, decision note persistence, approval/rejection transitions, filters, pagination, invalid acceptance input, completed candidate acceptance, publication environment blocking, horizontal overflow and browser warning/error output. The write interactions used a disposable local fixture rather than the active database.
 
 ## Initial quality commands
 

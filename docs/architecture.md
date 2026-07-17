@@ -4,20 +4,20 @@ This document describes the architecture that exists in the repository today. Fu
 
 ## Separation of responsibilities
 
-| Area              | Current runtime                     | Current storage                                       | Public             |
-| ----------------- | ----------------------------------- | ----------------------------------------------------- | ------------------ |
-| Wiki              | Sites-compatible Vinext application | Validated version 1 static JSON snapshot              | Yes                |
-| Mining admin      | Vinext application on `127.0.0.1`   | Read-only configured local SQLite aggregates          | No                 |
-| Extractor         | Local TypeScript CLI                | Private candidate SQLite and local Relink Wiki SQLite | No                 |
-| Source and schema | GitHub                              | Git                                                   | Repository members |
+| Area              | Current runtime                     | Current storage                                           | Public             |
+| ----------------- | ----------------------------------- | --------------------------------------------------------- | ------------------ |
+| Wiki              | Sites-compatible Vinext application | Validated version 1 static JSON snapshot                  | Yes                |
+| Mining admin      | Vinext application on `127.0.0.1`   | Read-only views plus explicitly gated local SQLite writes | No                 |
+| Extractor         | Local TypeScript CLI                | Private candidate SQLite and local Relink Wiki SQLite     | No                 |
+| Source and schema | GitHub                              | Git                                                       | Repository members |
 
 ## Data flow
 
 1. The operator uses the pinned external GBFRDataTools release to read the locally installed game archives into a private output location.
 2. The extractor CLI imports four allowlisted candidate SQLite tables into private staging records.
 3. A read-only validator measures Korean message join coverage. A separate local command can create a non-overwriting private mapping candidate from canonical resolved joins, and only an explicitly reviewed mapping converts selected staging rows into versioned `staged` normalized records.
-4. The database package can compare two compatible private normalization runs without writing state, then atomically persist an explicitly accepted baseline after validated NAS backup evidence and an optimistic baseline check. **Not implemented:** the local admin exposes this workflow or records rejection and per-record decisions.
-5. The publisher can generate a deterministic, allowlisted public snapshot preview from the accepted baseline. A strict private request fixes the reviewed file digest, content revision, publication UUID, timestamps and new backup evidence; the explicit local publication command atomically writes and re-verifies the version 1 JSON candidate, then a SQLite transaction verifies the writer receipt against the still-current baseline, records immutable publication history, advances the current-publication pointer and changes the complete baseline to `published`. **Not implemented:** mining-admin publication controls and public snapshot rollback.
+4. The database package compares compatible private normalization runs, and the local admin records `approved` or `rejected` decisions for every actionable change under an opaque comparison fingerprint. When all required rows are approved, it atomically persists an explicitly accepted baseline after validated NAS backup evidence and an optimistic baseline check.
+5. The publisher can generate a deterministic, allowlisted public snapshot preview from the accepted baseline. A strict private request fixes the reviewed file digest, content revision, publication UUID, timestamps and new backup evidence; the CLI or local-admin publication action atomically writes and re-verifies the version 1 JSON candidate, then a SQLite transaction verifies the writer receipt against the still-current baseline, records immutable publication history, advances the current-publication pointer and changes the complete baseline to `published`. Checked-in snapshot replacement, Sites deployment and public snapshot rollback remain separate explicit operations.
 6. The public wiki reads only the validated static snapshot bundled with its build. The current file is the explicitly reviewed schema version 1 publication containing 1,681 records; no local database access or private provenance is bundled with it. Reader-facing navigation exposes 1,680 records because the catalog presentation layer withholds the exact `character-pl000b` placeholder row while retaining it in the snapshot.
 7. The Sites build compiles only `apps/wiki`, packages its Worker and static assets at the repository root, and rejects artifacts containing known admin, database, or local-path markers. The reviewed schema version 1 publication is deployed at the current public Sites origin, and a separate verifier compares its complete JSON value with the expected reviewed file. Switching the public origin to a previous saved version remains an explicit rollback operation.
 
@@ -37,7 +37,7 @@ Quests, enemies, items, and other categories are future scope and require an exp
 
 ### Local mining admin
 
-The admin application binds to `127.0.0.1:3100` in its development command. It opens only the configured `RELINK_DATABASE_PATH` in SQLite read-only mode and renders aggregate normalization runs, the current accepted baseline and path-free backup evidence, review-state/category counts, current publication status, and the allowlisted preview revision/counts. Its page model excludes run identifiers, source paths, raw payloads, normalized record values, and database error details. Extractor execution, record differences, review actions, asset status, publication controls, and rollback are not connected to the app. See [`review-dashboard.md`](review-dashboard.md).
+The admin application binds to `127.0.0.1:3100` in its development command. Page rendering opens the configured `RELINK_DATABASE_PATH` read-only and shows aggregate normalization runs, the current accepted baseline and path-free backup evidence, review-state/category counts, current publication status, allowlisted preview revision/counts, and the latest staged-run diff. Its page model excludes run/source identifiers, source paths, raw payloads, private provenance and database error details. Record decisions and baseline acceptance use short server-side writable connections with comparison, review-completeness, backup and concurrency gates. The publication form delegates to the existing private request command; it does not deploy. Extractor execution, backup creation, value editing, checked-in snapshot replacement, deployment and rollback are not connected to the app. See [`review-dashboard.md`](review-dashboard.md).
 
 ## Publication strategy
 

@@ -1,4 +1,6 @@
-import { loadDashboard, type DashboardPreview } from "./dashboard-data";
+import type { NormalizationReviewWorkspace } from "@relink-wiki/database";
+import { acceptCandidateAction, publishSnapshotAction, saveRecordDecisionAction } from "./actions";
+import { loadDashboard, type DashboardPreview, type DashboardReview } from "./dashboard-data";
 
 const categoryLabels = {
   character: "캐릭터",
@@ -7,6 +9,62 @@ const categoryLabels = {
   skill: "어빌리티",
 } as const;
 const reviewStateLabels = { staged: "검수 전", reviewed: "승인됨", published: "발행됨" } as const;
+const diffStatusLabels = { added: "추가", changed: "변경", removed: "삭제" } as const;
+const decisionLabels = { approved: "승인", rejected: "거절" } as const;
+const changedFieldLabels = { id: "ID", slug: "슬러그", nameKo: "한국어 이름" } as const;
+const notices: Record<string, { tone: "success" | "error"; message: string }> = {
+  decision_saved: { tone: "success", message: "레코드 검수 결정을 저장했습니다." },
+  candidate_accepted: {
+    tone: "success",
+    message: "모든 검수 gate와 백업 증빙을 확인하고 normalization 후보를 승인했습니다.",
+  },
+  publication_completed: {
+    tone: "success",
+    message: "검토된 public snapshot 후보 쓰기와 publication 이력 기록을 완료했습니다.",
+  },
+  database_unset: { tone: "error", message: "RELINK_DATABASE_PATH를 먼저 설정하세요." },
+  database_invalid: {
+    tone: "error",
+    message: "로컬 데이터베이스가 최신 검수 계약을 충족하는지 확인하세요.",
+  },
+  review_stale: {
+    tone: "error",
+    message: "baseline 또는 최신 후보가 바뀌었습니다. 새 비교 결과를 다시 검수하세요.",
+  },
+  review_incomplete: { tone: "error", message: "아직 검수하지 않은 변경 레코드가 있습니다." },
+  review_rejected: { tone: "error", message: "거절된 변경 레코드가 있어 승인할 수 없습니다." },
+  review_input_invalid: { tone: "error", message: "레코드 검수 입력이 올바르지 않습니다." },
+  acceptance_input_invalid: {
+    tone: "error",
+    message: "승인 확인 문구 또는 NAS 백업 증빙이 올바르지 않습니다.",
+  },
+  publication_environment_unset: {
+    tone: "error",
+    message: "RELINK_PUBLICATION_REQUEST_PATH를 포함한 로컬 발행 환경을 설정하세요.",
+  },
+  publication_confirmation_invalid: {
+    tone: "error",
+    message: "명시적 발행 확인 문구가 일치하지 않습니다.",
+  },
+  publication_request_invalid: {
+    tone: "error",
+    message: "검토된 snapshot, 백업 증빙 또는 발행 요청 파일이 현재 상태와 일치하지 않습니다.",
+  },
+  publication_failed: {
+    tone: "error",
+    message: "public snapshot 발행을 안전하게 완료하지 못했습니다.",
+  },
+};
+
+type ReadyReview = Extract<NormalizationReviewWorkspace, { status: "ready" }>;
+type ReviewRecord = ReadyReview["records"][number];
+type SearchParams = Record<string, string | string[] | undefined>;
+interface ReviewFilters {
+  category: "all" | keyof typeof categoryLabels;
+  diff: "all" | keyof typeof diffStatusLabels;
+  decision: "all" | "pending" | keyof typeof decisionLabels;
+  page: number;
+}
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("ko-KR", {
@@ -18,6 +76,27 @@ function formatDate(value: string): string {
 
 function total(counts: Record<string, number>): number {
   return Object.values(counts).reduce((sum, count) => sum + count, 0);
+}
+
+function singleParam(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function parseFilters(searchParams: SearchParams): ReviewFilters {
+  const category = singleParam(searchParams.category);
+  const diff = singleParam(searchParams.diff);
+  const decision = singleParam(searchParams.decision);
+  const page = Number(singleParam(searchParams.page));
+  return {
+    category:
+      category && category in categoryLabels ? (category as keyof typeof categoryLabels) : "all",
+    diff: diff && diff in diffStatusLabels ? (diff as keyof typeof diffStatusLabels) : "all",
+    decision:
+      decision === "pending" || (decision && decision in decisionLabels)
+        ? (decision as ReviewFilters["decision"])
+        : "all",
+    page: Number.isInteger(page) && page > 0 ? page : 1,
+  };
 }
 
 function HashValue({ children }: Readonly<{ children: string }>) {
@@ -49,7 +128,302 @@ function PreviewPanel({ preview }: Readonly<{ preview: DashboardPreview }>) {
   );
 }
 
-export default function Home() {
+function RecordValue({
+  label,
+  value,
+}: Readonly<{ label: string; value: ReviewRecord["baseline"] }>) {
+  return (
+    <div className="record-value">
+      <p>{label}</p>
+      {!value ? (
+        <span className="value-empty">해당 없음</span>
+      ) : (
+        <dl>
+          <div>
+            <dt>ID</dt>
+            <dd>{value.id}</dd>
+          </div>
+          <div>
+            <dt>슬러그</dt>
+            <dd>{value.slug}</dd>
+          </div>
+          <div>
+            <dt>한국어 이름</dt>
+            <dd>{value.nameKo}</dd>
+          </div>
+        </dl>
+      )}
+    </div>
+  );
+}
+
+function pageHref(filters: ReviewFilters, page: number): string {
+  const query = new URLSearchParams();
+  if (filters.category !== "all") query.set("category", filters.category);
+  if (filters.diff !== "all") query.set("diff", filters.diff);
+  if (filters.decision !== "all") query.set("decision", filters.decision);
+  if (page > 1) query.set("page", String(page));
+  const serialized = query.toString();
+  return `${serialized ? `/?${serialized}` : "/"}#review`;
+}
+
+function ReviewPanel({
+  review,
+  filters,
+}: Readonly<{ review: DashboardReview; filters: ReviewFilters }>) {
+  if (review.status === "empty" || review.status === "unavailable") {
+    return <p className="empty-state">{review.message}</p>;
+  }
+  const filteredRecords = review.records.filter((record) => {
+    const decision = record.decision ?? "pending";
+    return (
+      (filters.category === "all" || record.category === filters.category) &&
+      (filters.diff === "all" || record.status === filters.diff) &&
+      (filters.decision === "all" || decision === filters.decision)
+    );
+  });
+  const pageSize = 30;
+  const pageCount = Math.max(1, Math.ceil(filteredRecords.length / pageSize));
+  const currentPage = Math.min(filters.page, pageCount);
+  const pageRecords = filteredRecords.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  return (
+    <div className="review-workspace">
+      <div className="review-summary-grid" aria-label="변경 비교 요약">
+        {Object.entries(review.summary).map(([status, count]) => (
+          <div key={status}>
+            <span>
+              {status === "unchanged"
+                ? "동일"
+                : diffStatusLabels[status as keyof typeof diffStatusLabels]}
+            </span>
+            <strong>{count.toLocaleString("ko-KR")}</strong>
+          </div>
+        ))}
+      </div>
+      <div className="decision-strip">
+        <span>
+          대기 <b>{review.decisionSummary.pending.toLocaleString("ko-KR")}</b>
+        </span>
+        <span className="approved">
+          승인 <b>{review.decisionSummary.approved.toLocaleString("ko-KR")}</b>
+        </span>
+        <span className="rejected">
+          거절 <b>{review.decisionSummary.rejected.toLocaleString("ko-KR")}</b>
+        </span>
+      </div>
+      <form className="review-filters" method="get">
+        <label>
+          카테고리
+          <select name="category" defaultValue={filters.category}>
+            <option value="all">전체</option>
+            {Object.entries(categoryLabels).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          변경 유형
+          <select name="diff" defaultValue={filters.diff}>
+            <option value="all">전체</option>
+            {Object.entries(diffStatusLabels).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          검수 상태
+          <select name="decision" defaultValue={filters.decision}>
+            <option value="all">전체</option>
+            <option value="pending">대기</option>
+            <option value="approved">승인</option>
+            <option value="rejected">거절</option>
+          </select>
+        </label>
+        <button className="secondary-button" type="submit">
+          필터 적용
+        </button>
+      </form>
+      <p className="candidate-meta">
+        최신 후보 · 스키마 v{review.schemaVersion} · {formatDate(review.candidateNormalizedAt)} ·
+        변경 검수 {review.records.length.toLocaleString("ko-KR")}건
+      </p>
+      {pageRecords.length === 0 ? (
+        <p className="empty-state">선택한 필터에 해당하는 변경 레코드가 없습니다.</p>
+      ) : (
+        <div className="record-review-list">
+          {pageRecords.map((record) => (
+            <article
+              className={`record-review-card ${record.decision ?? "pending"}`}
+              key={record.recordIndex}
+            >
+              <div className="record-review-heading">
+                <div>
+                  <span className={`diff-badge ${record.status}`}>
+                    {diffStatusLabels[record.status]}
+                  </span>
+                  <strong>{categoryLabels[record.category]}</strong>
+                </div>
+                <span className={`decision-badge ${record.decision ?? "pending"}`}>
+                  {record.decision ? decisionLabels[record.decision] : "검수 대기"}
+                </span>
+              </div>
+              {record.changedFields.length > 0 && (
+                <p className="changed-fields">
+                  변경 필드:{" "}
+                  {record.changedFields.map((field) => changedFieldLabels[field]).join(", ")}
+                </p>
+              )}
+              <div className="record-diff-grid">
+                <RecordValue label="이전 baseline" value={record.baseline} />
+                <RecordValue label="최신 후보" value={record.candidate} />
+              </div>
+              <form action={saveRecordDecisionAction} className="decision-form">
+                <input
+                  type="hidden"
+                  name="comparisonFingerprint"
+                  value={review.comparisonFingerprint}
+                />
+                <input type="hidden" name="recordIndex" value={record.recordIndex} />
+                <label>
+                  검수 메모 <span>선택 · 500자 이내</span>
+                  <textarea name="note" defaultValue={record.note ?? ""} maxLength={500} rows={2} />
+                </label>
+                <div className="decision-actions">
+                  <button className="reject-button" type="submit" name="decision" value="rejected">
+                    거절 저장
+                  </button>
+                  <button className="approve-button" type="submit" name="decision" value="approved">
+                    승인 저장
+                  </button>
+                </div>
+              </form>
+            </article>
+          ))}
+        </div>
+      )}
+      {pageCount > 1 && (
+        <nav className="pagination" aria-label="레코드 검수 페이지">
+          <a
+            aria-disabled={currentPage === 1}
+            href={pageHref(filters, Math.max(1, currentPage - 1))}
+          >
+            이전
+          </a>
+          <span>
+            {currentPage} / {pageCount}
+          </span>
+          <a
+            aria-disabled={currentPage === pageCount}
+            href={pageHref(filters, Math.min(pageCount, currentPage + 1))}
+          >
+            다음
+          </a>
+        </nav>
+      )}
+    </div>
+  );
+}
+
+function OperationPanel({
+  review,
+  preview,
+}: Readonly<{ review: DashboardReview; preview: DashboardPreview }>) {
+  const readyReview = review.status === "ready" ? review : null;
+  return (
+    <div className="operation-grid">
+      <article className="operation-card">
+        <p className="section-kicker">ACCEPT BASELINE</p>
+        <h3>검수 완료 후보 승인</h3>
+        <p>
+          모든 변경 레코드가 승인되고 거절이 없어야 합니다. 승인 직전 검증한 NAS 백업 증빙을
+          입력하세요.
+        </p>
+        {!readyReview ? (
+          <p className="operation-gate">승인할 staged 후보가 없습니다.</p>
+        ) : !readyReview.canAccept ? (
+          <p className="operation-gate danger">
+            대기 {readyReview.decisionSummary.pending}건 · 거절{" "}
+            {readyReview.decisionSummary.rejected}건을 먼저 해소하세요.
+          </p>
+        ) : (
+          <form action={acceptCandidateAction} className="operation-form">
+            <input
+              type="hidden"
+              name="comparisonFingerprint"
+              value={readyReview.comparisonFingerprint}
+            />
+            <label>
+              백업 참조
+              <input name="backupReference" placeholder="NAS-YYYYMMDDTHHMMSSZ" required />
+            </label>
+            <label>
+              백업 완료 시각
+              <input name="backupCreatedAt" placeholder="2026-07-17T10:00:00.000Z" required />
+            </label>
+            <label>
+              백업 SHA-256
+              <input name="backupSha256" pattern="[0-9a-f]{64}" required />
+            </label>
+            <label>
+              확인 문구
+              <input
+                name="confirmation"
+                placeholder="ACCEPT_FULLY_REVIEWED_NORMALIZATION_V1"
+                required
+              />
+            </label>
+            <button className="approve-button wide" type="submit">
+              백업 확인 후 후보 승인
+            </button>
+          </form>
+        )}
+      </article>
+      <article className="operation-card publication-card">
+        <p className="section-kicker">EXPLICIT PUBLICATION</p>
+        <h3>검토된 snapshot 발행</h3>
+        <p>
+          비공개 발행 요청 파일에 고정된 snapshot SHA-256, content revision, 새 NAS 백업과 출력
+          위치를 다시 검증합니다.
+        </p>
+        {preview.status === "unavailable" ? (
+          <p className="operation-gate">{preview.message}</p>
+        ) : (
+          <form action={publishSnapshotAction} className="operation-form">
+            <p className="revision-preview">
+              대상 리비전 <HashValue>{preview.contentRevision}</HashValue>
+            </p>
+            <label>
+              확인 문구
+              <input
+                name="confirmation"
+                placeholder="PUBLISH_REVIEWED_PUBLIC_SNAPSHOT_V1"
+                required
+              />
+            </label>
+            <button className="publication-button wide" type="submit">
+              후보 파일 및 publication 이력 발행
+            </button>
+          </form>
+        )}
+        <p className="boundary-note">
+          체크인 snapshot 교체, Git 작업, Sites 배포와 공개 전환은 실행하지 않습니다.
+        </p>
+      </article>
+    </div>
+  );
+}
+
+export default async function Home({
+  searchParams,
+}: Readonly<{ searchParams?: Promise<SearchParams> }>) {
+  const params = (await searchParams) ?? {};
+  const filters = parseFilters(params);
+  const notice = notices[singleParam(params.notice) ?? ""];
   const state = loadDashboard();
 
   if (state.kind === "error") {
@@ -74,7 +448,7 @@ export default function Home() {
     );
   }
 
-  const { dashboard, preview } = state;
+  const { dashboard, preview, review } = state;
   const baseline = dashboard.currentBaseline;
   const publication = dashboard.currentPublication;
   return (
@@ -82,8 +456,10 @@ export default function Home() {
       <header className="masthead">
         <div>
           <p className="eyebrow">LOCAL REVIEW CONSOLE</p>
-          <h1>검수 현황</h1>
-          <p className="lede">정규화부터 공개 후보까지, 로컬 데이터의 현재 경계를 확인합니다.</p>
+          <h1>검수 및 발행</h1>
+          <p className="lede">
+            정규화 변경을 레코드별로 확인하고, 백업 gate를 거쳐 승인과 발행을 명시적으로 실행합니다.
+          </p>
         </div>
         <div className="local-mark">
           <span />
@@ -91,11 +467,17 @@ export default function Home() {
         </div>
       </header>
 
+      {notice && (
+        <div className={`notice ${notice.tone}`} role="status">
+          {notice.message}
+        </div>
+      )}
+
       <section className="summary-grid" aria-label="검수 요약">
         <article className="metric-card accent">
           <p>데이터베이스</p>
-          <strong>읽기 전용</strong>
-          <span>연결 정상</span>
+          <strong>로컬 SQLite</strong>
+          <span>쓰기 gate 활성</span>
         </article>
         <article className="metric-card">
           <p>정규화 실행</p>
@@ -170,6 +552,17 @@ export default function Home() {
         )}
       </section>
 
+      <section className="panel" id="review" aria-labelledby="review-title">
+        <div className="section-heading">
+          <div>
+            <p className="section-kicker">RECORD REVIEW</p>
+            <h2 id="review-title">변경 비교 및 레코드 검수</h2>
+          </div>
+          <span className="muted">공개 allowlist 필드만 표시</span>
+        </div>
+        <ReviewPanel review={review} filters={filters} />
+      </section>
+
       <section className="panel" aria-labelledby="preview-title">
         <div className="section-heading">
           <div>
@@ -178,6 +571,17 @@ export default function Home() {
           </div>
         </div>
         <PreviewPanel preview={preview} />
+      </section>
+
+      <section className="panel operations-panel" aria-labelledby="operations-title">
+        <div className="section-heading">
+          <div>
+            <p className="section-kicker">GATED OPERATIONS</p>
+            <h2 id="operations-title">승인 및 발행</h2>
+          </div>
+          <span className="status-badge warning">명시적 확인 필요</span>
+        </div>
+        <OperationPanel review={review} preview={preview} />
       </section>
 
       <section className="panel" aria-labelledby="runs-title">
@@ -220,7 +624,8 @@ export default function Home() {
       </section>
 
       <footer>
-        <span>READ ONLY</span> 승인 및 발행 작업은 이 화면에서 수행할 수 없습니다.
+        <span>LOCAL WRITE GATED</span> 승인과 발행은 검수·백업·동시성 검증을 모두 통과한 경우에만
+        실행됩니다.
       </footer>
     </main>
   );
