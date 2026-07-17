@@ -53,12 +53,13 @@ export async function verifySiteDeployment(options) {
   const timeoutMs = options.timeoutMs ?? 15_000;
   const snapshotUrl = getDeploymentSnapshotUrl(options.siteUrl);
   const expectedSnapshot = await readSnapshotFile(options.expectedSnapshotPath);
+  const requestController = new AbortController();
 
   let response;
   try {
     response = await fetchImplementation(snapshotUrl, {
       headers: { accept: "application/json" },
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: AbortSignal.any([requestController.signal, AbortSignal.timeout(timeoutMs)]),
     });
   } catch (error) {
     throw new SiteDeploymentVerificationError(
@@ -75,19 +76,29 @@ export async function verifySiteDeployment(options) {
     );
   }
 
-  const contentLength = Number(response.headers.get("content-length"));
-  if (Number.isFinite(contentLength) && contentLength > maximumSnapshotBytes) {
+  const contentLengthHeader = response.headers.get("content-length");
+  const contentLength = contentLengthHeader === null ? undefined : Number(contentLengthHeader);
+  if (
+    contentLength !== undefined &&
+    Number.isFinite(contentLength) &&
+    contentLength > maximumSnapshotBytes
+  ) {
+    requestController.abort();
     throw new SiteDeploymentVerificationError(
       "SITE_SNAPSHOT_TOO_LARGE",
       "The deployed public snapshot exceeds the verification size limit",
     );
   }
 
-  const deployedSource = await response.text();
-  if (Buffer.byteLength(deployedSource, "utf8") > maximumSnapshotBytes) {
+  let deployedSource;
+  try {
+    deployedSource = await readLimitedResponseBody(response, requestController);
+  } catch (error) {
+    if (error instanceof SiteDeploymentVerificationError) throw error;
     throw new SiteDeploymentVerificationError(
-      "SITE_SNAPSHOT_TOO_LARGE",
-      "The deployed public snapshot exceeds the verification size limit",
+      "SITE_SNAPSHOT_UNAVAILABLE",
+      "The deployed public snapshot body could not be read",
+      { cause: error },
     );
   }
   const deployedSnapshot = parseSnapshot(deployedSource, "SITE_SNAPSHOT_INVALID");
@@ -99,7 +110,37 @@ export async function verifySiteDeployment(options) {
     );
   }
 
-  return summarizeSnapshot(deployedSnapshot);
+  return summarizeSnapshot(deployedSnapshot, "SITE_SNAPSHOT_INVALID");
+}
+
+/** @param {Response} response @param {AbortController} requestController */
+async function readLimitedResponseBody(response, requestController) {
+  if (!response.body) return "";
+
+  const reader = response.body.getReader();
+  const chunks = /** @type {Buffer[]} */ ([]);
+  let receivedBytes = 0;
+
+  try {
+    let result = await reader.read();
+    while (!result.done) {
+      receivedBytes += result.value.byteLength;
+      if (receivedBytes > maximumSnapshotBytes) {
+        requestController.abort();
+        await reader.cancel().catch(() => undefined);
+        throw new SiteDeploymentVerificationError(
+          "SITE_SNAPSHOT_TOO_LARGE",
+          "The deployed public snapshot exceeds the verification size limit",
+        );
+      }
+      chunks.push(Buffer.from(result.value));
+      result = await reader.read();
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  return Buffer.concat(chunks, receivedBytes).toString("utf8");
 }
 
 /** @param {string} snapshotFilePath @returns {Promise<unknown>} */
@@ -121,7 +162,7 @@ async function readSnapshotFile(snapshotFilePath) {
 function parseSnapshot(source, code) {
   try {
     const value = parseJson(source);
-    summarizeSnapshot(value);
+    summarizeSnapshot(value, code);
     return value;
   } catch (error) {
     if (error instanceof SiteDeploymentVerificationError) throw error;
@@ -131,13 +172,10 @@ function parseSnapshot(source, code) {
   }
 }
 
-/** @param {unknown} value */
-function summarizeSnapshot(value) {
+/** @param {unknown} value @param {string} invalidCode */
+function summarizeSnapshot(value, invalidCode) {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    throw new SiteDeploymentVerificationError(
-      "SITE_SNAPSHOT_INVALID",
-      "The snapshot must be an object",
-    );
+    throw new SiteDeploymentVerificationError(invalidCode, "The snapshot must be an object");
   }
   const snapshot = /** @type {Record<string, unknown>} */ (value);
   const schemaVersion = snapshot.schemaVersion;
@@ -147,7 +185,7 @@ function summarizeSnapshot(value) {
     schemaVersion < 1
   ) {
     throw new SiteDeploymentVerificationError(
-      "SITE_SNAPSHOT_INVALID",
+      invalidCode,
       "The snapshot schema version is invalid",
     );
   }
@@ -156,7 +194,7 @@ function summarizeSnapshot(value) {
     !/^[a-f0-9]{64}$/u.test(snapshot.contentRevision)
   ) {
     throw new SiteDeploymentVerificationError(
-      "SITE_SNAPSHOT_INVALID",
+      invalidCode,
       "The snapshot content revision is invalid",
     );
   }
@@ -167,7 +205,7 @@ function summarizeSnapshot(value) {
       const records = snapshot[collection];
       if (!Array.isArray(records)) {
         throw new SiteDeploymentVerificationError(
-          "SITE_SNAPSHOT_INVALID",
+          invalidCode,
           `The snapshot collection is invalid: ${collection}`,
         );
       }

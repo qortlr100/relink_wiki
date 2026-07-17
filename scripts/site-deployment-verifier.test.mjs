@@ -22,11 +22,12 @@ afterEach(async () => {
   );
 });
 
-async function writeExpectedSnapshot() {
+/** @param {unknown} [snapshot] */
+async function writeExpectedSnapshot(snapshot = reviewedSnapshot) {
   const directory = await mkdtemp(join(tmpdir(), "relink-site-verification-"));
   temporaryDirectories.push(directory);
   const snapshotPath = join(directory, "public-snapshot.v1.json");
-  await writeFile(snapshotPath, JSON.stringify(reviewedSnapshot));
+  await writeFile(snapshotPath, JSON.stringify(snapshot));
   return snapshotPath;
 }
 
@@ -80,6 +81,51 @@ describe("Sites deployment verifier", () => {
         fetchImplementation,
       }),
     ).rejects.toMatchObject({ code: "SITE_SNAPSHOT_MISMATCH" });
+  });
+
+  it("classifies an invalid expected snapshot separately from the deployment", async () => {
+    const expectedSnapshotPath = await writeExpectedSnapshot({
+      ...reviewedSnapshot,
+      contentRevision: "invalid",
+    });
+    const fetchImplementation = () => Promise.reject(new Error("must not fetch"));
+
+    await expect(
+      verifySiteDeployment({
+        siteUrl: "https://relink-wiki.example/",
+        expectedSnapshotPath,
+        fetchImplementation,
+      }),
+    ).rejects.toMatchObject({ code: "EXPECTED_SNAPSHOT_INVALID" });
+  });
+
+  it("stops reading a streamed response as soon as it exceeds the size limit", async () => {
+    const expectedSnapshotPath = await writeExpectedSnapshot();
+    const oversizedChunk = new Uint8Array(3 * 1024 * 1024);
+    let streamCancelled = false;
+    const fetchImplementation = () =>
+      Promise.resolve(
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(oversizedChunk);
+              controller.enqueue(oversizedChunk);
+            },
+            cancel() {
+              streamCancelled = true;
+            },
+          }),
+        ),
+      );
+
+    await expect(
+      verifySiteDeployment({
+        siteUrl: "https://relink-wiki.example/",
+        expectedSnapshotPath,
+        fetchImplementation,
+      }),
+    ).rejects.toMatchObject({ code: "SITE_SNAPSHOT_TOO_LARGE" });
+    expect(streamCancelled).toBe(true);
   });
 
   it("rejects an unavailable deployment without reading its body", async () => {
