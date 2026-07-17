@@ -45,6 +45,8 @@ The page uses separate Korean guidance for:
 
 These states do not echo the configured path or the underlying SQLite error. Restart the local admin after correcting the environment or database file.
 
+Within an otherwise readable dashboard, the review panel distinguishes an unavailable review storage/schema from saved decision rows that conflict with the current comparison. The former points the operator to migration and database-integrity checks; the latter points to decision-data integrity and the latest candidate state without exposing internal rows or exception details.
+
 ## Current limits
 
 The app does not run GBFRDataTools, generate or verify NAS backups, edit normalized values, create mapping files, replace the checked-in public snapshot, control deployment, or perform rollback. The operator must prepare reviewed mapping/snapshot and backup evidence through their existing private workflows. Database migration remains explicit and must be performed after the required NAS backup; the app reports a safe unavailable state when the record-review tables are missing.

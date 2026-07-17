@@ -261,4 +261,36 @@ describe("normalization record review workflow", () => {
       }),
     ).toThrow(expect.objectContaining({ code: "NORMALIZATION_RECORD_REVIEW_COMPARISON_STALE" }));
   });
+
+  it("distinguishes conflicting decision data from unavailable review storage", () => {
+    const inconsistentConnection = createConnection();
+    setupComparison(inconsistentConnection);
+    const workspace = readyWorkspace(inconsistentConnection);
+    const changed = workspace.records.find((record) => record.status === "changed");
+    if (!changed) {
+      throw new Error("Expected a changed record.");
+    }
+    saveNormalizationRecordReviewDecision(inconsistentConnection.db, {
+      comparisonFingerprint: workspace.comparisonFingerprint,
+      recordIndex: changed.recordIndex,
+      decision: "approved",
+      note: null,
+      decidedAt: "2026-07-17T03:20:00.000Z",
+    });
+    inconsistentConnection.sqlite
+      .prepare("UPDATE normalization_record_review_decisions SET diff_status = 'removed'")
+      .run();
+
+    expect(() => getNormalizationReviewWorkspace(inconsistentConnection.db)).toThrow(
+      expect.objectContaining({ code: "NORMALIZATION_RECORD_REVIEW_DATABASE_INVALID" }),
+    );
+
+    const unavailableConnection = createConnection();
+    setupComparison(unavailableConnection);
+    unavailableConnection.sqlite.exec("DROP TABLE normalization_record_review_decisions");
+
+    expect(() => getNormalizationReviewWorkspace(unavailableConnection.db)).toThrow(
+      expect.objectContaining({ code: "NORMALIZATION_RECORD_REVIEW_STORAGE_UNAVAILABLE" }),
+    );
+  });
 });

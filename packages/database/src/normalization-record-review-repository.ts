@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 import {
   backupReceiptSchema,
   normalizedDiffFieldSchema,
@@ -77,42 +77,38 @@ const reviewWorkspaceRecordSchema = z.object({
   note: decisionNoteSchema,
   decidedAt: z.iso.datetime().nullable(),
 });
-const reviewWorkspaceSchema = z.discriminatedUnion("status", [
-  z.object({
-    status: z.literal("empty"),
-    message: z.string().min(1),
+const readyReviewWorkspaceSchema = z.object({
+  status: z.literal("ready"),
+  comparisonFingerprint: fingerprintSchema,
+  schemaVersion: z.int().positive(),
+  candidateNormalizedAt: z.iso.datetime(),
+  hasBaseline: z.boolean(),
+  summary: z.object({
+    added: z.int().nonnegative(),
+    changed: z.int().nonnegative(),
+    removed: z.int().nonnegative(),
+    unchanged: z.int().nonnegative(),
   }),
-  z.object({
-    status: z.literal("ready"),
-    comparisonFingerprint: fingerprintSchema,
-    schemaVersion: z.int().positive(),
-    candidateNormalizedAt: z.iso.datetime(),
-    hasBaseline: z.boolean(),
-    summary: z.object({
-      added: z.int().nonnegative(),
-      changed: z.int().nonnegative(),
-      removed: z.int().nonnegative(),
-      unchanged: z.int().nonnegative(),
-    }),
-    decisionSummary: z.object({
-      pending: z.int().nonnegative(),
-      approved: z.int().nonnegative(),
-      rejected: z.int().nonnegative(),
-    }),
-    canAccept: z.boolean(),
-    records: z.array(reviewWorkspaceRecordSchema),
+  decisionSummary: z.object({
+    pending: z.int().nonnegative(),
+    approved: z.int().nonnegative(),
+    rejected: z.int().nonnegative(),
   }),
-]);
+  canAccept: z.boolean(),
+  records: z.array(reviewWorkspaceRecordSchema),
+});
 
 type RelinkDatabase = ReturnType<typeof openDatabase>["db"];
 type RelinkTransaction = Parameters<Parameters<RelinkDatabase["transaction"]>[0]>[0];
 type RelinkDatabaseExecutor = RelinkDatabase | RelinkTransaction;
 type ActionableStatus = z.infer<typeof actionableStatusSchema>;
 type ComparisonDiff = z.infer<typeof comparisonDiffSchema>;
-export type NormalizationReviewWorkspace = z.infer<typeof reviewWorkspaceSchema>;
+export type NormalizationReviewWorkspace =
+  { status: "empty"; message: string } | z.infer<typeof readyReviewWorkspaceSchema>;
 
 export type NormalizationRecordReviewErrorCode =
   | "NORMALIZATION_RECORD_REVIEW_INPUT_INVALID"
+  | "NORMALIZATION_RECORD_REVIEW_STORAGE_UNAVAILABLE"
   | "NORMALIZATION_RECORD_REVIEW_DATABASE_INVALID"
   | "NORMALIZATION_RECORD_REVIEW_COMPARISON_STALE"
   | "NORMALIZATION_RECORD_REVIEW_RECORD_INVALID"
@@ -158,37 +154,38 @@ function findCandidate(
   db: RelinkDatabaseExecutor,
   baselineNormalizationRunId: string | null,
 ): SelectedRun | null {
-  const runs = db
-    .select({
-      id: normalizationRuns.id,
-      normalizedAt: normalizationRuns.normalizedAt,
-      schemaVersion: normalizationRuns.schemaVersion,
-    })
-    .from(normalizationRuns)
-    .where(eq(normalizationRuns.schemaVersion, 1))
-    .orderBy(desc(normalizationRuns.normalizedAt), desc(normalizationRuns.id))
-    .all();
-
-  for (const run of runs) {
-    if (run.id === baselineNormalizationRunId) {
-      continue;
-    }
-    const stagedRecordCount =
-      db
-        .select({ recordCount: count() })
-        .from(normalizedRecords)
-        .where(
-          and(
-            eq(normalizedRecords.normalizationRunId, run.id),
-            eq(normalizedRecords.reviewState, "staged"),
-          ),
-        )
-        .get()?.recordCount ?? 0;
-    if (stagedRecordCount > 0) {
-      return run;
-    }
-  }
-  return null;
+  return (
+    db
+      .select({
+        id: normalizationRuns.id,
+        normalizedAt: normalizationRuns.normalizedAt,
+        schemaVersion: normalizationRuns.schemaVersion,
+      })
+      .from(normalizationRuns)
+      .innerJoin(
+        normalizedRecords,
+        and(
+          eq(normalizedRecords.normalizationRunId, normalizationRuns.id),
+          eq(normalizedRecords.reviewState, "staged"),
+        ),
+      )
+      .where(
+        and(
+          eq(normalizationRuns.schemaVersion, 1),
+          baselineNormalizationRunId
+            ? ne(normalizationRuns.id, baselineNormalizationRunId)
+            : undefined,
+        ),
+      )
+      .groupBy(
+        normalizationRuns.id,
+        normalizationRuns.normalizedAt,
+        normalizationRuns.schemaVersion,
+      )
+      .orderBy(desc(normalizationRuns.normalizedAt), desc(normalizationRuns.id))
+      .limit(1)
+      .get() ?? null
+  );
 }
 
 function createInitialDiff(db: RelinkDatabaseExecutor, candidate: SelectedRun): ComparisonDiff {
@@ -288,7 +285,7 @@ function readDecisionRows(db: RelinkDatabaseExecutor, comparison: InternalCompar
 function toWorkspace(
   db: RelinkDatabaseExecutor,
   comparison: InternalComparison,
-): NormalizationReviewWorkspace {
+): z.infer<typeof readyReviewWorkspaceSchema> {
   const decisions = readDecisionRows(db, comparison);
   const records = comparison.diff.records.flatMap((record, recordIndex) => {
     if (record.status === "unchanged") {
@@ -312,7 +309,7 @@ function toWorkspace(
   const approved = records.filter((record) => record.decision === "approved").length;
   const rejected = records.filter((record) => record.decision === "rejected").length;
   const pending = records.length - approved - rejected;
-  return reviewWorkspaceSchema.parse({
+  return readyReviewWorkspaceSchema.parse({
     status: "ready",
     comparisonFingerprint: comparison.fingerprint,
     schemaVersion: comparison.candidate.schemaVersion,
@@ -337,8 +334,8 @@ export function getNormalizationReviewWorkspace(db: RelinkDatabase): Normalizati
       throw error;
     }
     throw new NormalizationRecordReviewError(
-      "NORMALIZATION_RECORD_REVIEW_DATABASE_INVALID",
-      "레코드 검수 비교를 안전하게 읽을 수 없습니다.",
+      "NORMALIZATION_RECORD_REVIEW_STORAGE_UNAVAILABLE",
+      "레코드 검수 저장소를 읽을 수 없습니다.",
     );
   }
 }
@@ -434,12 +431,6 @@ export function acceptFullyReviewedNormalizationRun(
     (transaction) => {
       const comparison = requireCurrentComparison(transaction, candidate.comparisonFingerprint);
       const workspace = toWorkspace(transaction, comparison);
-      if (workspace.status !== "ready") {
-        throw new NormalizationRecordReviewError(
-          "NORMALIZATION_RECORD_REVIEW_COMPARISON_STALE",
-          "승인할 최신 비교를 찾을 수 없습니다.",
-        );
-      }
       if (workspace.decisionSummary.rejected > 0) {
         throw new NormalizationRecordReviewError(
           "NORMALIZATION_RECORD_REVIEW_REJECTED",

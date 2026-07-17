@@ -66,6 +66,7 @@ function reviewErrorNotice(error: unknown): string {
       case "NORMALIZATION_RECORD_REVIEW_INPUT_INVALID":
       case "NORMALIZATION_RECORD_REVIEW_RECORD_INVALID":
         return "review_input_invalid";
+      case "NORMALIZATION_RECORD_REVIEW_STORAGE_UNAVAILABLE":
       case "NORMALIZATION_RECORD_REVIEW_DATABASE_INVALID":
         return "database_invalid";
     }

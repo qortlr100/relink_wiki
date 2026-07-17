@@ -1,6 +1,7 @@
 import {
   getNormalizationReviewWorkspace,
   getReviewDashboard,
+  NormalizationRecordReviewError,
   openReadonlyDatabase,
   type NormalizationReviewWorkspace,
   type ReviewDashboard,
@@ -84,10 +85,21 @@ function sqliteErrorCode(error: unknown): string | null {
 function loadReview(db: ReturnType<typeof openReadonlyDatabase>["db"]): DashboardReview {
   try {
     return getNormalizationReviewWorkspace(db);
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof NormalizationRecordReviewError &&
+      error.code === "NORMALIZATION_RECORD_REVIEW_DATABASE_INVALID"
+    ) {
+      return {
+        status: "unavailable",
+        message:
+          "저장된 검수 결정이 현재 비교 결과와 일치하지 않습니다. 데이터 무결성과 최신 후보 상태를 확인하세요.",
+      };
+    }
     return {
       status: "unavailable",
-      message: "레코드 검수 테이블을 읽을 수 없습니다. 최신 마이그레이션을 적용하세요.",
+      message:
+        "레코드 검수 저장소를 읽을 수 없습니다. 마이그레이션 상태와 데이터베이스 무결성을 확인하세요.",
     };
   }
 }
