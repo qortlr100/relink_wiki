@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import {
   catalogRecords,
   categories,
+  getCategoryRecords,
   getRecordHref,
   publicSnapshot as snapshot,
 } from "./archive/catalog";
@@ -97,7 +98,7 @@ export default function Home() {
                 <p>{category.description}</p>
               </div>
               <strong>
-                {snapshot[category.key].length}
+                {getCategoryRecords(category.key).length}
                 <small> records</small>
               </strong>
             </a>

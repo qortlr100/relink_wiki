@@ -1,5 +1,5 @@
 import { RecordList } from "./record-list";
-import { getCategory, isCategoryKey, publicSnapshot } from "../catalog";
+import { getCategory, getCategoryRecords, isCategoryKey } from "../catalog";
 
 interface CategoryPageProps {
   params: Promise<{ category: string }>;
@@ -38,7 +38,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
           <p>{categoryInfo.description}</p>
         </div>
       </header>
-      <RecordList categoryKey={category} records={publicSnapshot[category]} />
+      <RecordList categoryKey={category} records={getCategoryRecords(category)} />
     </main>
   );
 }
