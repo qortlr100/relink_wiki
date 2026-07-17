@@ -1,6 +1,7 @@
 import type { NormalizationReviewWorkspace } from "@relink-wiki/database";
 import { acceptCandidateAction, publishSnapshotAction, saveRecordDecisionAction } from "./actions";
 import { loadDashboard, type DashboardPreview, type DashboardReview } from "./dashboard-data";
+import { hasOwnKey } from "./review-input";
 import { resolveReviewNotice } from "./review-notices";
 
 const categoryLabels = {
@@ -45,13 +46,9 @@ function parseFilters(searchParams: SearchParams): ReviewFilters {
   const decision = singleParam(searchParams.decision);
   const page = Number(singleParam(searchParams.page));
   return {
-    category:
-      category && category in categoryLabels ? (category as keyof typeof categoryLabels) : "all",
-    diff: diff && diff in diffStatusLabels ? (diff as keyof typeof diffStatusLabels) : "all",
-    decision:
-      decision === "pending" || (decision && decision in decisionLabels)
-        ? (decision as ReviewFilters["decision"])
-        : "all",
+    category: hasOwnKey(categoryLabels, category) ? category : "all",
+    diff: hasOwnKey(diffStatusLabels, diff) ? diff : "all",
+    decision: decision === "pending" || hasOwnKey(decisionLabels, decision) ? decision : "all",
     page: Number.isInteger(page) && page > 0 ? page : 1,
   };
 }

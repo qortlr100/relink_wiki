@@ -355,64 +355,67 @@ export function saveNormalizationRecordReviewDecision(
     );
   }
   const candidate = validation.data;
-  const comparison = requireCurrentComparison(db, candidate.comparisonFingerprint);
-  const record = comparison.diff.records[candidate.recordIndex];
-  if (!record || record.status === "unchanged") {
-    throw new NormalizationRecordReviewError(
-      "NORMALIZATION_RECORD_REVIEW_RECORD_INVALID",
-      "현재 비교에서 검수할 변경 레코드를 찾을 수 없습니다.",
-    );
-  }
-  const note = candidate.note === "" ? null : candidate.note;
+  return db.transaction(
+    (transaction) => {
+      const comparison = requireCurrentComparison(transaction, candidate.comparisonFingerprint);
+      const record = comparison.diff.records[candidate.recordIndex];
+      if (!record || record.status === "unchanged") {
+        throw new NormalizationRecordReviewError(
+          "NORMALIZATION_RECORD_REVIEW_RECORD_INVALID",
+          "현재 비교에서 검수할 변경 레코드를 찾을 수 없습니다.",
+        );
+      }
+      const note = candidate.note === "" ? null : candidate.note;
 
-  db.transaction((transaction) => {
-    transaction
-      .insert(normalizationReviewComparisons)
-      .values({
-        fingerprint: comparison.fingerprint,
-        baselineNormalizationRunId: comparison.baselineNormalizationRunId,
-        candidateNormalizationRunId: comparison.candidate.id,
-        schemaVersion: comparison.candidate.schemaVersion,
-        createdAt: candidate.decidedAt,
-      })
-      .onConflictDoNothing()
-      .run();
-    const storedComparison = transaction
-      .select()
-      .from(normalizationReviewComparisons)
-      .where(eq(normalizationReviewComparisons.fingerprint, comparison.fingerprint))
-      .get();
-    if (
-      storedComparison?.baselineNormalizationRunId !== comparison.baselineNormalizationRunId ||
-      storedComparison.candidateNormalizationRunId !== comparison.candidate.id
-    ) {
-      throw new NormalizationRecordReviewError(
-        "NORMALIZATION_RECORD_REVIEW_COMPARISON_STALE",
-        "저장된 비교 경계가 현재 검수 대상과 일치하지 않습니다.",
-      );
-    }
-    transaction
-      .insert(normalizationRecordReviewDecisions)
-      .values({
-        comparisonFingerprint: comparison.fingerprint,
-        category: record.category,
-        sourceRecordId: record.sourceRecordId,
-        diffStatus: record.status,
-        decision: candidate.decision,
-        note,
-        decidedAt: candidate.decidedAt,
-      })
-      .onConflictDoUpdate({
-        target: [
-          normalizationRecordReviewDecisions.comparisonFingerprint,
-          normalizationRecordReviewDecisions.category,
-          normalizationRecordReviewDecisions.sourceRecordId,
-        ],
-        set: { decision: candidate.decision, note, decidedAt: candidate.decidedAt },
-      })
-      .run();
-  });
-  return toWorkspace(db, comparison);
+      transaction
+        .insert(normalizationReviewComparisons)
+        .values({
+          fingerprint: comparison.fingerprint,
+          baselineNormalizationRunId: comparison.baselineNormalizationRunId,
+          candidateNormalizationRunId: comparison.candidate.id,
+          schemaVersion: comparison.candidate.schemaVersion,
+          createdAt: candidate.decidedAt,
+        })
+        .onConflictDoNothing()
+        .run();
+      const storedComparison = transaction
+        .select()
+        .from(normalizationReviewComparisons)
+        .where(eq(normalizationReviewComparisons.fingerprint, comparison.fingerprint))
+        .get();
+      if (
+        storedComparison?.baselineNormalizationRunId !== comparison.baselineNormalizationRunId ||
+        storedComparison.candidateNormalizationRunId !== comparison.candidate.id
+      ) {
+        throw new NormalizationRecordReviewError(
+          "NORMALIZATION_RECORD_REVIEW_COMPARISON_STALE",
+          "저장된 비교 경계가 현재 검수 대상과 일치하지 않습니다.",
+        );
+      }
+      transaction
+        .insert(normalizationRecordReviewDecisions)
+        .values({
+          comparisonFingerprint: comparison.fingerprint,
+          category: record.category,
+          sourceRecordId: record.sourceRecordId,
+          diffStatus: record.status,
+          decision: candidate.decision,
+          note,
+          decidedAt: candidate.decidedAt,
+        })
+        .onConflictDoUpdate({
+          target: [
+            normalizationRecordReviewDecisions.comparisonFingerprint,
+            normalizationRecordReviewDecisions.category,
+            normalizationRecordReviewDecisions.sourceRecordId,
+          ],
+          set: { decision: candidate.decision, note, decidedAt: candidate.decidedAt },
+        })
+        .run();
+      return toWorkspace(transaction, comparison);
+    },
+    { behavior: "immediate" },
+  );
 }
 
 export function acceptFullyReviewedNormalizationRun(

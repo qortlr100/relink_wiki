@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   acceptFullyReviewedNormalizationRun,
   acceptNormalizationRun,
@@ -148,6 +148,7 @@ describe("normalization record review workflow", () => {
     if (!changed) {
       throw new Error("Expected a changed record.");
     }
+    const transactionSpy = vi.spyOn(connection.db, "transaction");
     const updated = saveNormalizationRecordReviewDecision(connection.db, {
       comparisonFingerprint: workspace.comparisonFingerprint,
       recordIndex: changed.recordIndex,
@@ -160,6 +161,7 @@ describe("normalization record review workflow", () => {
       status: "ready",
       decisionSummary: { pending: 2, approved: 1, rejected: 0 },
     });
+    expect(transactionSpy).toHaveBeenCalledWith(expect.any(Function), { behavior: "immediate" });
   });
 
   it("blocks acceptance until all changed records are approved", () => {

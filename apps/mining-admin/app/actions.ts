@@ -12,12 +12,13 @@ import {
 } from "@relink-wiki/publisher";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { recordIndexFormSchema } from "./review-input";
 
 const fingerprintSchema = z.string().regex(/^[0-9a-f]{64}$/);
 const sha256Schema = z.string().regex(/^[0-9a-f]{64}$/);
 const decisionFormSchema = z.object({
   comparisonFingerprint: fingerprintSchema,
-  recordIndex: z.coerce.number().int().nonnegative(),
+  recordIndex: recordIndexFormSchema,
   decision: z.enum(["approved", "rejected"]),
   note: z.string().trim().max(500),
 });
