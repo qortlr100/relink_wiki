@@ -31,7 +31,7 @@ Git does not track original game files, extracted assets, local databases, gener
 
 ### Public wiki
 
-The public application currently provides search, category lists, sorting, and record details for the four version 1 collections: characters, weapons, sigils, and skills. Its loader validates the complete snapshot with `publicSnapshotSchema` before rendering. Internal extraction paths, private records, and mining state must never be included in its build. Weapon/skill-to-character relationship coverage is now measurable through the private read-only validator, but version 1 does not publish or render those links while two private character targets remain unmapped.
+The public application currently provides search, category lists, sorting, and record details for the four version 1 collections: characters, weapons, sigils, and skills. Its loader validates the complete snapshot with `publicSnapshotSchema` before rendering. Internal extraction paths, private records, and mining state must never be included in its build. Weapon/skill-to-character relationship coverage is now measurable through the private read-only validator. The two private protagonist targets have an evidence-backed, one-to-one public mapping policy, but version 1 does not publish or render those links until the mapping revision, review and versioned schema gates in [`character-relationship-mapping-policy.md`](character-relationship-mapping-policy.md) are completed.
 
 Quests, enemies, items, and other categories are future scope and require an explicit domain and public snapshot contract before UI routes are added.
 

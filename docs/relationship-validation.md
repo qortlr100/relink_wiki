@@ -35,7 +35,9 @@ The 2026-07-18 validation of the reviewed version 1 mapping produced:
 | Weapon → character |            361 |      324 |                  37 |                       2 |
 | Skill → character  |            262 |      230 |                  32 |                       2 |
 
-There are no empty or unknown references. Both relationship sets are blocked by the same two character targets that exist in the private candidate table but are not present in the reviewed mapping, so `readyForPublicRelationships` is currently `false`. Their display-name and public-presentation policy must be resolved explicitly before a relationship-capable normalization and snapshot schema is introduced.
+There are no empty or unknown references. Both relationship sets are blocked by the same two character targets that exist in the private candidate table but are not present in the reviewed mapping, so `readyForPublicRelationships` is currently `false`.
+
+The public-presentation decision is now recorded in [`character-relationship-mapping-policy.md`](character-relationship-mapping-policy.md): preserve the targets as separate character records named `주인공 (남성)` and `주인공 (여성)`, then route each relationship to its corresponding variant. The policy does not mutate the current private mapping or version 1 public schema.
 
 ## Run
 
@@ -60,7 +62,7 @@ Errors do not include private paths, source identifiers, localized text or sourc
 
 Before adding relationships to the normalized database or public snapshot:
 
-1. establish an evidence-backed public policy for the two unmapped character targets;
+1. add the two policy-approved character records to a new private mapping revision and review their normalization diff;
 2. make this validator report `readyForPublicRelationships: true` against the reviewed mapping;
 3. design a new versioned normalized and public DTO contract, including diff and review fields;
 4. back up the active SQLite database before applying its migration;

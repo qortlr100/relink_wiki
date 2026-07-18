@@ -51,7 +51,9 @@ The 2026-07-15 validation against the pinned GBFRDataTools `2.0.0` candidate out
 | Sigil     |       1,034 |          1,023 |        1,023 |                     11 |                      0 |               0 |
 | Skill     |         278 |            262 |          262 |                     16 |                      0 |               0 |
 
-The two unresolved character rows share one context-dependent key whose base display-name text is empty; non-empty sub-identifiers contain other UI contexts and cannot be selected as a canonical character name without an explicit rule. The two unmatched weapon rows share one unresolved hash-like key rather than the normal `TXT_WEP_NAME_*` form. Because their intended display names and publication meaning are not established, the validator reports only unresolved counts and sets `readyForAutomaticNormalization` to `false`.
+The two unresolved character rows share one context-dependent key whose base display-name text is empty. A separate evidence review established that every non-empty context variant agrees on `주인공` and that the structured character fields distinguish male and female playable variants. [`character-relationship-mapping-policy.md`](character-relationship-mapping-policy.md) defines the narrow reviewed names `주인공 (남성)` and `주인공 (여성)`. The validator intentionally remains strict: context-only text is not promoted into the general canonical display-name catalog, so these rows continue to require explicit private mapping.
+
+The two unmatched weapon rows share one unresolved hash-like key rather than the normal `TXT_WEP_NAME_*` form. Their intended display names and publication meaning are still not established. Because automatic coverage is incomplete, the validator reports only unresolved counts and sets `readyForAutomaticNormalization` to `false`.
 
 Empty or null keys are counted as ignored candidate rows. They are not silently converted into public records. An explicit policy for placeholder and internal rows is required before automatic localized normalization is introduced.
 
