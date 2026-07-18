@@ -47,7 +47,7 @@ Korean catalogs may intentionally contain Latin letters, digits, or repeated dis
 
 The first 2026-07-15 local candidate contains 1,681 records: 35 characters, 361 weapons, 1,023 sigils, and 262 skills. Structural review found no empty names, control characters, or `id`/`slug` mismatches. Four resolved catalog strings contain no Hangul and are retained because they are non-empty canonical results; 260 category-scoped duplicate-name groups are retained because display names are not identifiers. The two unresolved character rows, two unresolved weapon rows, and all empty-key rows remain excluded.
 
-On 2026-07-18, `mapping:protagonists` revalidated the exact private policy evidence and created a separate 1,683-record revision without changing the original mapping. Mapped normalization produced a candidate whose baseline diff is exactly two added character records and 1,681 unchanged records; both additions were approved through the record-review workflow. Baseline acceptance, schema changes and publication remain separate gates.
+On 2026-07-18, `mapping:protagonists` revalidated the exact private policy evidence and created a separate 1,683-record revision without changing the original mapping. Mapped normalization produced a candidate whose baseline diff is exactly two added character records and 1,681 unchanged records; both additions were approved through the record-review workflow. The resulting baseline was accepted and published locally through the separate backup and confirmation gates. Relationship schema changes and Sites deployment remain separate operations.
 
 ## Run and review
 

@@ -35,7 +35,7 @@ The Sites lifecycle may create `.sites-runtime/` for local package-manager and c
 - The build must not read the local database or publisher output directory.
 - A Sites checkpoint never performs extraction, review, snapshot publication, or database state transition.
 
-The current checked-in snapshot is the explicitly reviewed schema version 1 publication with 1,681 records. On 2026-07-17, the current Sites public origin served the same content revision `7a9617732a647eb42202210936c61cfad4c0c15f7c327904c583261004869241` with 35 characters, 361 weapons, 1,023 sigils and 262 skills. This confirms the actual release rather than only the local artifact.
+The current checked-in snapshot is the explicitly reviewed schema version 1 publication with content revision `1b6f48b407c6114ee6dc73328c561d37a4f3dd21d2de8a944296a34e6b2117cf`: 37 characters, 361 weapons, 1,023 sigils and 262 skills, for 1,683 records total. A Sites checkpoint becomes the current public release only after the public origin passes the complete JSON comparison below; the checked-in artifact alone is not deployment evidence.
 
 ## Deployed snapshot verification
 

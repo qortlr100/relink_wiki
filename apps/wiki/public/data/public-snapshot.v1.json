@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "contentRevision": "7a9617732a647eb42202210936c61cfad4c0c15f7c327904c583261004869241",
-  "generatedAt": "2026-07-16T14:09:27.641Z",
-  "sourceRevision": "dde5225042b8e54e55549edf06f4eb32b65afb669c0a144bef4ca57ba60aedb9",
+  "contentRevision": "1b6f48b407c6114ee6dc73328c561d37a4f3dd21d2de8a944296a34e6b2117cf",
+  "generatedAt": "2026-07-18T05:29:41.152Z",
+  "sourceRevision": "c1556002da1011379c6ce7b4a8e6588bf286e9aa82b1a247c94992b018420bb1",
   "extractor": {
     "name": "GBFRDataTools",
     "version": "2.0.0"
   },
   "recordCounts": {
-    "characters": 35,
+    "characters": 37,
     "weapons": 361,
     "sigils": 1023,
     "skills": 262
@@ -51,9 +51,21 @@
       "reviewState": "published"
     },
     {
+      "id": "character-pl0000",
+      "slug": "character-pl0000",
+      "nameKo": "주인공 (남성)",
+      "reviewState": "published"
+    },
+    {
       "id": "character-pl000b",
       "slug": "character-pl000b",
       "nameKo": "dummy",
+      "reviewState": "published"
+    },
+    {
+      "id": "character-pl0100",
+      "slug": "character-pl0100",
+      "nameKo": "주인공 (여성)",
       "reviewState": "published"
     },
     {
