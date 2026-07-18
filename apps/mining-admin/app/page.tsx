@@ -531,7 +531,14 @@ export default async function Home({
             <p className="section-kicker">RECORD REVIEW</p>
             <h2 id="review-title">변경 비교 및 레코드 검수</h2>
           </div>
-          <span className="muted">공개 allowlist 필드만 표시</span>
+          <div className="section-actions">
+            <span className="muted">공개 allowlist 필드만 표시</span>
+            {review.status === "ready" && (
+              <a className="report-download" href="/change-report" download>
+                Markdown 보고서
+              </a>
+            )}
+          </div>
         </div>
         <ReviewPanel review={review} filters={filters} />
       </section>

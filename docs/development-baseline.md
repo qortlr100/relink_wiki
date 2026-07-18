@@ -56,15 +56,15 @@ The currently validated extraction baseline pins GBFRDataTools `2.0.0` and requi
 
 Each stage has a separate input/output contract. The current repository status is:
 
-| Stage         | Status      | Current contract                                                                                                                                                                                               |
-| ------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **extract**   | Partial     | Preflight and a documented read-only GBFRDataTools workflow exist; the repository does not invoke extraction yet.                                                                                              |
-| **import**    | Implemented | Imports four allowlisted candidate tables into private staging records with provenance and idempotency.                                                                                                        |
-| **normalize** | Implemented | Generates a private review candidate from canonical resolved localization joins, then maps only the explicitly reviewed JSON into versioned `staged` records.                                                  |
-| **diff**      | Implemented | A read-only engine compares two compatible private normalization runs with deterministic, allowlisted results.                                                                                                 |
-| **review**    | Implemented | The local admin compares the latest staged run, persists per-record approval/rejection, rejects stale comparisons, and gates baseline acceptance on complete approval plus NAS backup evidence.                |
-| **publish**   | Partial     | Local CLI and mining-admin publication controls, checked-in schema v1 snapshot and the actual Sites release are complete; checked-in replacement, deployment and rollback remain separate explicit operations. |
-| **verify**    | Partial     | The actual snapshot passes automated boundaries, browser checks and complete deployed-JSON comparison; a live rollback transition still requires explicit approval and rehearsal.                              |
+| Stage         | Status      | Current contract                                                                                                                                                                                                              |
+| ------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **extract**   | Partial     | Preflight and a documented read-only GBFRDataTools workflow exist; the repository does not invoke extraction yet.                                                                                                             |
+| **import**    | Implemented | Imports four allowlisted candidate tables into private staging records with provenance and idempotency.                                                                                                                       |
+| **normalize** | Implemented | Generates a private review candidate from canonical resolved localization joins, then maps only the explicitly reviewed JSON into versioned `staged` records.                                                                 |
+| **diff**      | Implemented | A read-only engine compares two compatible private normalization runs with deterministic, allowlisted results.                                                                                                                |
+| **review**    | Implemented | The local admin compares the latest staged run, exports an allowlist-only deterministic Markdown report, persists per-record decisions, rejects stale comparisons, and gates acceptance on approval plus NAS backup evidence. |
+| **publish**   | Partial     | Local CLI and mining-admin publication controls, checked-in schema v1 snapshot and the actual Sites release are complete; checked-in replacement, deployment and rollback remain separate explicit operations.                |
+| **verify**    | Partial     | The actual snapshot passes automated boundaries, browser checks and complete deployed-JSON comparison; a live rollback transition still requires explicit approval and rehearsal.                                             |
 
 Stages must be independently repeatable and must not infer success from file existence alone.
 

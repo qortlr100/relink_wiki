@@ -29,6 +29,12 @@ Decision, acceptance, and publication forms also post the current review filter 
 
 The acceptance form is rendered only after pending and rejected counts both reach zero. It requires path-free NAS backup evidence and exact confirmation `ACCEPT_FULLY_REVIEWED_NORMALIZATION_V1`. An immediate SQLite transaction rebuilds the comparison and decision summary before the nested acceptance write, so another connection cannot change a decision between the gate and the expected-baseline/state transition.
 
+## Automatic change report
+
+When a staged candidate comparison is available, the review heading provides a Markdown download generated in memory from the same validated review workspace. The report is deterministic for a comparison fingerprint and contains the schema version, candidate normalization time, comparison and decision summaries, and every actionable record's category, diff status, decision state, changed-field names, and public `id`, `slug`, and `nameKo` values.
+
+The report does not write a server-side file and is returned with `no-store` and download headers. It excludes filesystem paths, source record identifiers, run and publication UUIDs, raw payloads, private provenance, decision notes, and decision timestamps. Missing, unreadable, or stale review data returns the same path-free operator guidance used by the dashboard instead of a partial report.
+
 ## Publication action
 
 The publication form is a UI entry point to the existing strict private request command. It requires exact confirmation `PUBLISH_REVIEWED_PUBLIC_SNAPSHOT_V1`; server-only environment variables resolve the database and request paths. The existing command revalidates the reviewed snapshot bytes/content revision, new backup evidence, output directory, current publication revision, writer receipt, accepted baseline and review states.
@@ -58,3 +64,5 @@ The implemented console was manually verified on 2026-07-17 against both the cur
 The disposable fixture covered an approval with a persisted note, a transition from approval to rejection, category/diff/decision filtering, the second page of a 30-record page, an invalid acceptance confirmation, and the successful acceptance transition after every actionable record was approved. The publication button was also confirmed to stop at the missing private-request environment gate; no snapshot output or publication history was created during QA.
 
 Desktop and `390 × 844` mobile layouts had no horizontal overflow. The record before/after values collapsed from two columns to one on mobile while both decision buttons remained visible. Browser warning/error logs, the development error overlay, and the server error log were empty during the completed pass.
+
+The automatic Markdown report follow-up was visually re-verified on 2026-07-18 with a disposable added/changed/removed comparison. At `1440 × 900`, the download action remained aligned with the review heading; at `390 × 844`, the action, filters, one-column before/after values, note field, and both decision buttons stayed within the viewport. Clicking the action produced a browser download event without navigating away, horizontal overflow remained absent at both sizes, and the browser warning/error log stayed empty.

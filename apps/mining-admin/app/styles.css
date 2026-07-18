@@ -116,6 +116,28 @@ h1 {
   margin: 0;
   font-size: 1.28rem;
 }
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.report-download {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px solid #34444f;
+  border-radius: 8px;
+  color: #d0dbe0;
+  background: #1a252c;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.report-download:hover {
+  border-color: #577080;
+  background: #22313a;
+}
 .section-kicker {
   margin-bottom: 7px;
   color: #6d7b85;
