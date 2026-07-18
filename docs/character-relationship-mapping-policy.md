@@ -11,11 +11,11 @@ The 2026-07-18 local review established all of the following without writing pri
 - both rows use the same character message key;
 - the base display-name entry is empty, but all six non-empty context variants agree on the Korean label `주인공`;
 - both rows are non-NPC, level-capable character entries with distinct UI order values;
-- their structured gender values are different, and those values consistently mean male and female when cross-checked against the existing reviewed character catalog;
-- the reviewed mapping currently contains 19 weapon and 16 skill references to the male target, and 18 weapon and 16 skill references to the female target;
+- their structured gender values are different. The cross-check covered all 35 rows in the existing reviewed character mapping: among the 33 non-placeholder person rows, all 17 rows with value `1` are male-presented and all 16 rows with value `2` are female-presented; one non-human row with value `0` and one `dummy` row with value `1` were not used as supporting samples, and no reviewed row contradicted the interpretation;
+- among weapon and skill source rows already present in the reviewed mapping, 19 weapons and 16 skills target the still-unmapped male character row, while 18 weapons and 16 skills target the still-unmapped female character row;
 - there are no empty or unknown targets in either relationship set.
 
-The evidence supports two real variants of one player-facing role. It does not support treating the empty base message as a canonical name, inventing a proper name, or merging two source identities into one target.
+The evidence supports two real variants of one player-facing role. It does not support treating the empty base message as a canonical name, inventing a proper name, or merging two source identities into one target. The gender interpretation is strong dataset-specific evidence, not an official extractor enum contract; the revalidation and correction triggers below therefore remain mandatory.
 
 ## Decision
 
@@ -30,12 +30,27 @@ The implementation must follow these rules:
 
 1. Keep one normalized character record per private source row. Derive each public `id` and `slug` from its existing stable character identifier using the normal character mapping rule.
 2. Route every weapon and skill relationship to the corresponding variant. Do not collapse both targets into a synthetic shared protagonist record.
-3. Treat the gender suffix as an explicit reviewed disambiguation derived from the structured character field. Do not use a context-only message row as the general canonical display-name join.
+3. Treat the gender suffix as an explicit reviewed disambiguation derived from the current structured character evidence, not as a universal enum assumption. Do not use a context-only message row as the general canonical display-name join.
 4. Do not substitute proper names such as Gran or Djeeta unless a later reproducible Korean source establishes those names for this data contract.
-5. Add the two records through the private reviewed mapping workflow. The automatic mapping-candidate generator remains strict and must continue to exclude empty base display-name entries.
+5. Add the two records through the private reviewed mapping workflow. The automatic mapping-candidate generator remains strict and must continue to exclude empty base display-name entries. A previously reviewed manual mapping does not bypass the revalidation triggers below.
 6. Keep private source identifiers, message identifiers, raw rows and local paths out of documentation, public DTOs and logs.
 
 This is a narrow reviewed exception for the two known protagonist rows, not a general fallback for unresolved localization.
+
+## Revalidation and correction triggers
+
+Before reusing this exception after a GBFRDataTools version, candidate database or Korean message catalog change, rerun `localization:validate` and privately verify that the two targets still have the same stable identities, empty canonical display-name entries, unanimous `주인공` context variants and the same non-contradictory gender evidence.
+
+Any of the following invalidates this policy for a new mapping or publication until the evidence and decision are reviewed again:
+
+- the character unresolved count is no longer exactly two;
+- either target gains a non-empty canonical Korean display name;
+- the context variants no longer agree, or the structured gender evidence changes or gains a contradiction;
+- either target's stable identity or relationship meaning changes.
+
+When a canonical Korean name becomes available, replace the derived label only through a new private mapping revision, normalization diff and explicit review. Do not silently retain the manual label and do not overwrite an existing operator mapping file.
+
+If contradictory evidence is found before publication, block the publication. If it is found after publication, stop further publications, explicitly roll Sites back to the last verified saved version that predates the affected snapshot, correct and review the private mapping, publish a new allowlisted snapshot through the normal gates, verify the restored deployment and update this policy and its Notion decision record. Never patch the deployed JSON directly. See [`sites-deployment.md`](sites-deployment.md) and [`publication-history.md`](publication-history.md).
 
 ## Rejected alternatives
 
@@ -50,11 +65,12 @@ This is a narrow reviewed exception for the two known protagonist rows, not a ge
 
 Policy approval alone does not authorize publication. Before relationship fields are added to normalized records or a public snapshot:
 
-1. add both character records to a new private mapping revision using the decided names and stable IDs;
-2. run mapped normalization and review the resulting two added character records through the existing diff and approval workflow;
-3. rerun relationship validation and require 361 of 361 weapon references and 262 of 262 skill references to resolve with `readyForPublicRelationships: true`;
-4. design a new versioned normalized and public DTO relationship contract, including diff and review behavior;
-5. back up the active SQLite database before any migration or accepted-baseline replacement;
-6. preview, review and publish through the existing explicit gates.
+1. satisfy the revalidation triggers above against the exact private inputs used for the mapping revision;
+2. add both character records to a new private mapping revision using the decided names and stable IDs;
+3. run mapped normalization and review the resulting two added character records through the existing diff and approval workflow;
+4. rerun relationship validation and require 361 of 361 weapon references and 262 of 262 skill references to resolve with `readyForPublicRelationships: true`;
+5. design a new versioned normalized and public DTO relationship contract, including diff and review behavior;
+6. back up the active SQLite database before any migration or accepted-baseline replacement;
+7. preview, review and publish through the existing explicit gates.
 
 The current version 1 schema and published snapshot remain unchanged until those steps are completed.
