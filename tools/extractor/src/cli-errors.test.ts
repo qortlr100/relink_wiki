@@ -4,6 +4,7 @@ import { CandidateImportError } from "./import-candidate";
 import { classifyCliFailure, readCliConfig } from "./cli-errors";
 import { NormalizationMappingError } from "./normalize-mapped";
 import { LocalizationValidationError } from "./validate-localization";
+import { RelationshipValidationError } from "./validate-relationships";
 
 describe("classifyCliFailure", () => {
   it("keeps configuration validation separate from runtime failures", () => {
@@ -54,6 +55,17 @@ describe("classifyCliFailure", () => {
     ).toEqual({
       code: "LOCALIZATION_MESSAGE_INVALID",
       message: "한국어 메시지 구조 오류",
+    });
+  });
+
+  it("preserves stable relationship validation errors", () => {
+    expect(
+      classifyCliFailure(
+        new RelationshipValidationError("RELATIONSHIP_MAPPING_INVALID", "관계 mapping 구조 오류"),
+      ),
+    ).toEqual({
+      code: "RELATIONSHIP_MAPPING_INVALID",
+      message: "관계 mapping 구조 오류",
     });
   });
 });

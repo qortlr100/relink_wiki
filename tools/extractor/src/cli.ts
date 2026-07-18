@@ -9,6 +9,7 @@ import {
   readLocalizationValidationConfig,
   validateLocalizationJoins,
 } from "./validate-localization";
+import { readRelationshipValidationConfig, validateRelationships } from "./validate-relationships";
 
 try {
   const command = process.argv[2] ?? "preflight";
@@ -58,6 +59,17 @@ try {
       JSON.stringify({
         code: "LOCALIZATION_JOIN_VALIDATED",
         message: "한국어 메시지 조인 범위를 검증했습니다.",
+        ...result,
+      }),
+    );
+  } else if (command === "validate-relationships") {
+    const result = validateRelationships(
+      readCliConfig(() => readRelationshipValidationConfig(process.env)),
+    );
+    console.log(
+      JSON.stringify({
+        code: "RELATIONSHIP_JOIN_VALIDATED",
+        message: "공개 후보 관계 조인 범위를 검증했습니다.",
         ...result,
       }),
     );

@@ -12,6 +12,7 @@
     "localization:validate": "tsx src/cli.ts validate-localization",
     "normalize:mapped": "tsx src/cli.ts normalize-mapped",
     "preflight": "tsx src/cli.ts",
+    "relationships:validate": "tsx src/cli.ts validate-relationships",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
