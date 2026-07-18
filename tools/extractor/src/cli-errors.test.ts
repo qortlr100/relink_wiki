@@ -5,6 +5,7 @@ import { classifyCliFailure, readCliConfig } from "./cli-errors";
 import { NormalizationMappingError } from "./normalize-mapped";
 import { LocalizationValidationError } from "./validate-localization";
 import { RelationshipValidationError } from "./validate-relationships";
+import { ProtagonistMappingRevisionError } from "./revise-protagonist-mapping";
 
 describe("classifyCliFailure", () => {
   it("keeps configuration validation separate from runtime failures", () => {
@@ -66,6 +67,20 @@ describe("classifyCliFailure", () => {
     ).toEqual({
       code: "RELATIONSHIP_MAPPING_INVALID",
       message: "관계 mapping 구조 오류",
+    });
+  });
+
+  it("preserves stable protagonist mapping revision errors", () => {
+    expect(
+      classifyCliFailure(
+        new ProtagonistMappingRevisionError(
+          "PROTAGONIST_MAPPING_EVIDENCE_INVALID",
+          "주인공 mapping 근거 오류",
+        ),
+      ),
+    ).toEqual({
+      code: "PROTAGONIST_MAPPING_EVIDENCE_INVALID",
+      message: "주인공 mapping 근거 오류",
     });
   });
 });
