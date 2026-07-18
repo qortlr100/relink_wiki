@@ -73,4 +73,4 @@ Policy approval alone does not authorize publication. Before relationship fields
 6. back up the active SQLite database before any migration or accepted-baseline replacement;
 7. preview, review and publish through the existing explicit gates.
 
-The current version 1 schema and published snapshot remain unchanged until those steps are completed.
+Steps 1–4 were completed locally on 2026-07-18: the non-overwriting mapping revision revalidated the exact evidence, mapped normalization produced exactly two added character records with 1,681 unchanged records, both additions received record-level approval, and relationship validation resolved all 361 mapped weapons and 262 mapped skills with `readyForPublicRelationships: true`. Steps 5–7 remain open. The current version 1 schema, accepted baseline and published snapshot remain unchanged until those gates are completed.

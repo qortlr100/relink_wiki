@@ -10,6 +10,10 @@ import {
   validateLocalizationJoins,
 } from "./validate-localization";
 import { readRelationshipValidationConfig, validateRelationships } from "./validate-relationships";
+import {
+  readProtagonistMappingRevisionConfig,
+  reviseProtagonistMapping,
+} from "./revise-protagonist-mapping";
 
 try {
   const command = process.argv[2] ?? "preflight";
@@ -22,6 +26,17 @@ try {
       JSON.stringify({
         code: "MAPPING_CANDIDATE_GENERATED",
         message: "검수용 비공개 정규화 mapping 후보를 생성했습니다.",
+        ...result,
+      }),
+    );
+  } else if (command === "revise-protagonist-mapping") {
+    const result = reviseProtagonistMapping(
+      readCliConfig(() => readProtagonistMappingRevisionConfig(process.env)),
+    );
+    console.log(
+      JSON.stringify({
+        code: "PROTAGONIST_MAPPING_REVISED",
+        message: "정책 근거를 재검증하고 새 private mapping 개정본을 생성했습니다.",
         ...result,
       }),
     );

@@ -113,7 +113,7 @@ function readSourceRows(
   });
 }
 
-function toPublicToken(sourceIdentifier: string): string {
+export function toPublicToken(sourceIdentifier: string): string {
   return sourceIdentifier
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
