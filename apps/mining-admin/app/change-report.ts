@@ -22,7 +22,7 @@ function escapeMarkdown(value: string): string {
   return value
     .replace(/\r\n?/g, "\n")
     .replace(/\n/g, " ")
-    .replace(/([\\`*_[\]{}()#+\-.!|>])/g, "\\$1");
+    .replace(/([\\`*_[\]{}()#+\-.!<|>])/g, "\\$1");
 }
 
 function recordValueLines(label: string, value: ReviewRecordValue): string[] {

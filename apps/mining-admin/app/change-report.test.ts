@@ -18,7 +18,11 @@ const readyReview = {
       status: "changed",
       changedFields: ["slug", "nameKo"],
       baseline: { id: "weapon-1", slug: "old-slug", nameKo: "이전 이름" },
-      candidate: { id: "weapon-1", slug: "new-(slug)", nameKo: "새 이름\n둘째 줄" },
+      candidate: {
+        id: "weapon-1",
+        slug: "new-(slug)",
+        nameKo: "새 이름\n둘째 줄 <img src=x onerror=alert(1)>",
+      },
       decision: "approved",
       note: "PRIVATE_REVIEW_NOTE",
       decidedAt: "2026-07-18T02:00:00.000Z",
@@ -40,7 +44,10 @@ describe("normalization change report", () => {
     expect(first.markdown).toContain("# 정규화 변경 보고서");
     expect(first.markdown).toContain("- **변경 필드:** 슬러그, 한국어 이름");
     expect(first.markdown).toContain("- **후보 슬러그:** new\\-\\(slug\\)");
-    expect(first.markdown).toContain("- **후보 한국어 이름:** 새 이름 둘째 줄");
+    expect(first.markdown).toContain(
+      "- **후보 한국어 이름:** 새 이름 둘째 줄 \\<img src=x onerror=alert\\(1\\)\\>",
+    );
+    expect(first.markdown).not.toContain("새 이름 둘째 줄 <img");
     expect(first.markdown).not.toContain("PRIVATE_REVIEW_NOTE");
     expect(first.markdown).not.toContain("2026-07-18T02:00:00.000Z");
     expect(first.markdown).not.toContain("recordIndex");
