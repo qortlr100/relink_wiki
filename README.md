@@ -6,7 +6,7 @@ Granblue Fantasy: Relink 데이터를 로컬에서 추출·검수하고, 승인�
 
 - 공개 위키는 검증된 버전 1 정적 JSON 스냅샷에서 캐릭터, 무기, 진, 스킬의 검색·목록·상세 화면을 제공합니다. 저장소와 [현재 Sites 공개본](https://relink-wiki.cid100.chatgpt.site)에는 로컬 publication을 완료한 실제 schema v1 스냅샷 1,681건이 포함되어 있습니다. 추출 결과는 그대로 보존하되 아직 독자용 표현 계약이 없는 `character-pl000b` 한 건은 프론트엔드 탐색에서만 제외하므로 현재 검색·목록·상세 UI에는 1,680건이 노출됩니다.
 - 로컬 마이닝 관리 도구는 `127.0.0.1:3100`에만 바인딩되며, `RELINK_DATABASE_PATH`의 SQLite에서 normalization 실행, 현재 baseline, 백업 증빙, review state, publication 및 allowlist 미리보기를 표시합니다. 최신 staged 후보의 `added`·`changed`·`removed` 레코드를 공개 allowlist 필드만으로 비교하고 결정적 Markdown 변경 보고서를 내려받으며, 승인/거절 결정 저장과 모든 변경 승인·NAS 백업 gate 후 baseline 승인 및 명시적 snapshot 발행을 실행합니다.
-- 추출기 패키지는 GBFRDataTools `2.0.0` 실행 전 점검, 후보 SQLite의 private staging import, 한국어 메시지 조인 검증, 검수용 mapping 후보 생성과 명시적 매핑 기반 normalization을 지원합니다.
+- 추출기 패키지는 GBFRDataTools `2.0.0` 실행 전 점검, 후보 SQLite의 private staging import, 한국어 메시지 조인 검증, 검수용 mapping 후보 생성과 명시적 매핑 기반 normalization을 지원합니다. 또한 현재 mapping의 무기·스킬이 공개 가능한 캐릭터에 안전하게 연결되는지 식별자나 값을 노출하지 않는 집계로 검증합니다.
 - 데이터베이스 패키지는 두 private normalization 실행의 공개 후보 필드를 비교하고, 비교 fingerprint에 묶인 레코드별 승인/거절 결정과 NAS 백업 증빙, baseline 동시성 확인을 거친 명시적 승인을 영속화합니다. publisher 패키지는 승인된 baseline에서 allowlist 공개 DTO와 검증 가능한 manifest 미리보기를 만들며, 검토 파일의 전체 SHA-256과 명시적 확인 토큰을 고정한 로컬 발행 요청으로 version 1 JSON 후보 쓰기와 publication DB transaction을 연결합니다. 체크인 snapshot 교체, Sites 배포와 rollback은 관리 UI 발행과 분리됩니다.
 - 공개 위키 빌드는 Sites용 Worker와 정적 자산만 루트 `dist/`에 패키징하고, 관리 앱·SQLite·로컬 경로 표식이 산출물에 포함되지 않았는지 검사합니다. 현재 실제 스냅샷은 이 경계를 통과해 Sites에 공개됐으며, 저장소의 검토 파일과 배포본의 전체 JSON 일치 여부를 별도 명령으로 확인할 수 있습니다. 이전 체크포인트로 실제 전환하는 rollback 훈련은 명시적 운영 승인 후 수행합니다.
 
@@ -60,6 +60,14 @@ pnpm --filter @relink-wiki/extractor localization:validate
 ```
 
 필요한 비공개 메시지 경로, 확인된 조인 열, 현재 미해결 범위는 [`docs/localization-validation.md`](docs/localization-validation.md)를 참고하세요. 이 명령은 정규화 레코드를 쓰거나 발행하지 않습니다.
+
+현재 검수 mapping의 무기·스킬 → 캐릭터 관계가 공개 링크로 확장 가능한지 읽기 전용으로 검증하려면 실행합니다.
+
+```bash
+pnpm --filter @relink-wiki/extractor relationships:validate
+```
+
+명령은 집계 건수만 출력하며 source 식별자, 공개 ID, 한국어 이름과 로컬 경로를 반환하지 않습니다. 현재 두 개의 미정규화 캐릭터 대상 때문에 공개 관계 준비 상태는 닫혀 있습니다. 확인된 조인과 다음 gate는 [`docs/relationship-validation.md`](docs/relationship-validation.md)를 참고하세요.
 
 현재 import와 검증된 한국어 조인에서 로컬 검수용 mapping 후보를 처음 생성하려면 실행합니다.
 
