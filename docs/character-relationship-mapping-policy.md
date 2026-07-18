@@ -68,7 +68,7 @@ Policy approval alone does not authorize publication. Before relationship fields
 1. satisfy the revalidation triggers above against the exact private inputs used for the mapping revision;
 2. add both character records to a new private mapping revision using the decided names and stable IDs;
 3. run mapped normalization and review the resulting two added character records through the existing diff and approval workflow;
-4. rerun relationship validation and require 361 of 361 weapon references and 262 of 262 skill references to resolve with `readyForPublicRelationships: true`;
+4. rerun relationship validation and require every currently mapped weapon and skill reference to resolve with `readyForPublicRelationships: true`; treat the reported mapped-source counts as evidence for that exact input, not as fixed policy constants;
 5. design a new versioned normalized and public DTO relationship contract, including diff and review behavior;
 6. back up the active SQLite database before any migration or accepted-baseline replacement;
 7. preview, review and publish through the existing explicit gates.
