@@ -35,7 +35,7 @@ The Sites lifecycle may create `.sites-runtime/` for local package-manager and c
 - The build must not read the local database or publisher output directory.
 - A Sites checkpoint never performs extraction, review, snapshot publication, or database state transition.
 
-The current checked-in snapshot is the explicitly reviewed schema version 1 publication with 1,681 records. On 2026-07-17, the current Sites public origin served the same content revision `7a9617732a647eb42202210936c61cfad4c0c15f7c327904c583261004869241` with 35 characters, 361 weapons, 1,023 sigils and 262 skills. This confirms the actual release rather than only the local artifact.
+The current checked-in snapshot is the explicitly reviewed schema version 1 publication with content revision `1b6f48b407c6114ee6dc73328c561d37a4f3dd21d2de8a944296a34e6b2117cf`: 37 characters, 361 weapons, 1,023 sigils and 262 skills, for 1,683 records total. A Sites checkpoint becomes the current public release only after the public origin passes the complete JSON comparison below; the checked-in artifact alone is not deployment evidence.
 
 ## Deployed snapshot verification
 
@@ -61,7 +61,7 @@ pnpm site:verify -- https://relink-wiki.cid100.chatgpt.site --expected-snapshot 
 4. Create and verify an immutable Sites checkpoint.
 5. Widen access only after the deployed snapshot identity and public content are confirmed.
 
-The current schema version 1 publication has completed this sequence.
+The checked-in 2026-07-18 schema version 1 publication has completed steps 1–3. Steps 4–5 remain pending until that exact revision is deployed and the public origin passes the complete JSON comparison.
 
 ## Rollback sequence
 
@@ -73,4 +73,4 @@ The current schema version 1 publication has completed this sequence.
 6. If deployment or verification fails, redeploy the version recorded in step 1 and verify it against its own reviewed snapshot.
 7. Record both the selected version and verification result in the Notion work log. Never delete either checkpoint or its NAS backup evidence.
 
-On 2026-07-17, the verifier passed against the current public release. A non-disruptive private deployment of the previous version was rejected because the project is already public, so the live rollback transition was intentionally not performed without a separate approval and maintenance window.
+On 2026-07-17, the verifier passed against the public release that preceded the checked-in 2026-07-18 snapshot. That result is historical evidence for the prior deployment, not deployment evidence for the current checked-in revision. A non-disruptive private deployment of the previous version was rejected because the project is already public, so the live rollback transition was intentionally not performed without a separate approval and maintenance window.

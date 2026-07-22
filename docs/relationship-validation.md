@@ -46,7 +46,7 @@ The later 2026-07-18 private mapping revision revalidated that policy, added the
 | Weapon → character |            361 |      361 |                   0 |                       0 |
 | Skill → character  |            262 |      262 |                   0 |                       0 |
 
-There are still no empty or unknown references, and `readyForPublicRelationships` is `true` for that exact revision. This private review result does not accept a new baseline or change the version 1 normalized/public schema, checked-in snapshot or Sites deployment.
+There are still no empty or unknown references, and `readyForPublicRelationships` is `true` for that exact revision. The two target character records were subsequently accepted and published in schema version 1. Relationship fields remain absent, so this result is evidence for a future versioned relationship DTO rather than proof that relationship links are public.
 
 ## Run
 
