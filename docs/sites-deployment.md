@@ -61,7 +61,7 @@ pnpm site:verify -- https://relink-wiki.cid100.chatgpt.site --expected-snapshot 
 4. Create and verify an immutable Sites checkpoint.
 5. Widen access only after the deployed snapshot identity and public content are confirmed.
 
-The current schema version 1 publication has completed this sequence.
+The checked-in 2026-07-18 schema version 1 publication has completed steps 1–3. Steps 4–5 remain pending until that exact revision is deployed and the public origin passes the complete JSON comparison.
 
 ## Rollback sequence
 
@@ -73,4 +73,4 @@ The current schema version 1 publication has completed this sequence.
 6. If deployment or verification fails, redeploy the version recorded in step 1 and verify it against its own reviewed snapshot.
 7. Record both the selected version and verification result in the Notion work log. Never delete either checkpoint or its NAS backup evidence.
 
-On 2026-07-17, the verifier passed against the current public release. A non-disruptive private deployment of the previous version was rejected because the project is already public, so the live rollback transition was intentionally not performed without a separate approval and maintenance window.
+On 2026-07-17, the verifier passed against the public release that preceded the checked-in 2026-07-18 snapshot. That result is historical evidence for the prior deployment, not deployment evidence for the current checked-in revision. A non-disruptive private deployment of the previous version was rejected because the project is already public, so the live rollback transition was intentionally not performed without a separate approval and maintenance window.
